@@ -1,3 +1,5 @@
+# Cloud & Infrastructure as Service Basics with DigitalOcean
+
 ## Setup Server on DigitalOcean
 In this section, a remote cloud server was provisioned and secured to prepare the deployment environment.
 
