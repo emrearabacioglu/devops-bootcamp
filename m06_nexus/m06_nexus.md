@@ -38,11 +38,105 @@ netstat -lnpt
 cat /opt/sonatype-work/nexus3/admin.password
 ```
    
-## Introduction to Nexus
-   
-## Repository Types
-   
-## Publish Artifact to Repository
+# Publishing Artifacts to Nexus Repository
+
+This document demonstrates how to publish build artifacts to a Nexus repository using both Gradle and Maven build tools. To do this, each build tool must be configured with the Nexus server address and authentication credentials.
+
+## 1. Publishing a Gradle Project
+
+### Configuring `build.gradle`
+To publish a Java application using Gradle, the `maven-publish` plugin is applied, and the Nexus repository details (URL, security protocol, and credentials) are defined inside the `build.gradle` file.
+
+```groovy
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        create("maven", MavenPublication) {
+            artifact("build/libs/my-app-$version" + ".jar") {
+                extension 'jar'
+            }
+        }
+    }
+    repositories {
+        maven {
+            name 'nexus'
+            url "http://46.101.180.141:8081/repository/maven-snapshots/"
+            allowInsecureProtocol = true
+            credentials {
+                username project.repoUser
+                password project.repoPassword
+            }
+        }
+    }
+}
+```
+
+### Executing the Publish Command
+Execute the publish task from the project root directory.
+
+```bash
+gradle publish
+```
+
+---
+
+## 2. Publishing a Maven Project
+
+### Configuring `pom.xml`
+For a Maven-based application, the `maven-deploy-plugin` is required. The target Nexus repository URL and its specific ID are defined under the `distributionManagement` section in the `pom.xml` file.
+
+```xml
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-deploy-plugin</artifactId>
+    <version>3.1.4</version>
+</plugin>
+
+<distributionManagement>
+    <snapshotRepository>
+        <id>nexus-snapshots</id>
+        <url>http://46.101.180.141:8081/repository/maven-snapshots/</url>
+    </snapshotRepository>
+</distributionManagement>
+```
+
+### Configuring Credentials in `settings.xml`
+Maven securely reads server authentication details from the local user settings, rather than the project file. The credentials must be mapped to the exact `<id>` used in the `pom.xml`.
+
+Navigate to the Maven configuration directory and edit the settings file:
+```bash
+cd ~/.m2/
+vim settings.xml
+```
+
+Add the following configuration:
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>nexus-snapshots</id>
+            <username>emre</username>
+            <password>12345678</password>
+        </server>
+    </servers>
+</settings>
+```
+
+### Packaging and Deploying
+Navigate back to the project directory to compile, package the application into a `.jar` file, and deploy it to the remote Nexus repository.
+
+```bash
+cd ~/IdeaProjects/java-maven-app/
+
+# Compiles the code and builds the .jar artifact in the target/ directory
+mvn package
+
+# Uploads the built artifact and pom files to the Nexus repository
+mvn deploy
+```
+<img width="998" height="1125" alt="image" src="https://github.com/user-attachments/assets/606e7c41-7f5f-4a16-b02b-98a34d464281" />
+
    
 ## Nexus REST API
    
