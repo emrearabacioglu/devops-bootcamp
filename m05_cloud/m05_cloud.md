@@ -1,6 +1,8 @@
 # Cloud & Infrastructure as Service Basics with DigitalOcean
-
-## Setup Server on DigitalOcean
+******
+<details>
+<summary>Setup Server on DigitalOcean</summary>
+ <br />
 In this section, a remote cloud server was provisioned and secured to prepare the deployment environment.
 
 * **Droplet Provisioning:** Created an Ubuntu-based virtual machine on DigitalOcean.
@@ -13,8 +15,13 @@ In this section, a remote cloud server was provisioned and secured to prepare th
 * **Install Java:** Installed Java in order to run the applications using following command:
 
 ``` apt install openjdk-17-jre-headless ```
+</details>
 
-## Deploy and run application artifact on Server
+******
+
+<details>
+<summary>Deploy and run application artifact on Server</summary>
+ <br />
 
 In this phase, the application was built locally and the resulting artifact was securely transferred and deployed to the remote cloud server for execution.
 
@@ -81,8 +88,12 @@ In this phase, the application was built locally and the resulting artifact was 
   tcp6       0      0 :::22                   :::*                    LISTEN      1/init
   root@ubuntu-droplet:~#
 ```
+</details>
 
-## Create and configure a Linux user on a cloud server
+******
+<details>
+<summary>Create and configure a Linux user on a cloud server</summary>
+ <br />
 To enhance security and avoid using the root account for daily operations, a dedicated user was created and configured with administrative privileges and SSH key-based authentication.
 
 * **User Creation:** Created a new standard user (`emre`) along with a dedicated home directory.
@@ -98,3 +109,7 @@ su - emre
 mkdir .ssh
 sudo vim .ssh/authorized_keys
 ```
+
+</details>
+
+******
