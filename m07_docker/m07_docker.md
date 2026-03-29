@@ -3,20 +3,25 @@
 ******
 
 <details>
-<summary>What is a Container</summary>
- <br />
-
-**content will be here**
- 
-</details>
-
-******
-
-<details>
 <summary>Container vs Image</summary>
  <br />
 
-**content will be here**
+Installed Docker on local machine
+
+Demo executed - run two different Versions of Postgres Docker Images:
+
+```bash
+
+docker run --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword postgres:13.10
+
+docker run --name some-postgres-new -e POSTGRES_PASSWORD=mysecretpassword -d postgres:14.7
+
+PS C:\Users\emrea> docker ps
+CONTAINER ID   IMAGE            COMMAND                  CREATED          STATUS          PORTS      NAMES
+c7056dad1904   postgres:14.7    "docker-entrypoint.s…"   4 seconds ago    Up 3 seconds    5432/tcp   some-postgres-new
+ede91111c847   postgres:13.10   "docker-entrypoint.s…"   11 minutes ago   Up 11 minutes   5432/tcp   some-postgres
+
+```
  
 </details>
 
