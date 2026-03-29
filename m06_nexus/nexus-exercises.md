@@ -233,6 +233,23 @@ You decide to automate the fetching from Nexus and starting the application So y
 * Write a script that fetches the latest version from npm repository. Untar it and run on the server!
 * Execute the script on the droplet
 
+Script: 
+```bash
+#!/bin/bash
+
+
+DOWNLOAD_URL=$(curl -s -u user3:12345678 -X GET 'http://46.101.180.141:8081/service/rest/v1/search/assets?repository=maven-repo&name=my-app&sort=version' | jq -r '.items[0].downloadUrl')
+
+wget --user=user3 --password=12345678 -O app.jar "$DOWNLOAD_URL"
+
+java -jar app.jar
+
+```
+Execution: 
+
+<img width="1320" height="409" alt="image" src="https://github.com/user-attachments/assets/0a5f1602-3258-4b43-807d-16b935bc14e5" />
+
+
 </details>
 
 *******
