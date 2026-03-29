@@ -1,7 +1,9 @@
 # Artifact Repository Manager with Nexus
-
+******
    
-## Install and Run Nexus on a Cloud Server
+<details>
+<summary>Install and Run Nexus on a Cloud Server</summary>
+ <br />
 
 In this module, a remote cloud server was provisioned and configured to host the Sonatype Nexus Repository Manager. Security best practices were applied by creating a dedicated user for the service.
 
@@ -37,8 +39,13 @@ netstat -lnpt
 # Retrieve initial admin password
 cat /opt/sonatype-work/nexus3/admin.password
 ```
-   
-# Publishing Artifacts to Nexus Repository
+</details>
+
+******
+
+ <details>
+<summary>Publishing Artifacts to Nexus Repository</summary>
+ <br />
 
 This document demonstrates how to publish build artifacts to a Nexus repository using both Gradle and Maven build tools. To do this, each build tool must be configured with the Nexus server address and authentication credentials.
 
@@ -137,11 +144,11 @@ mvn deploy
 ```
 <img width="998" height="1125" alt="image" src="https://github.com/user-attachments/assets/606e7c41-7f5f-4a16-b02b-98a34d464281" />
 
-   
-## Nexus REST API
-   
-## Blob Store
-   
-## Component vs Asset 
-   
-## Cleanup Policies and Scheduled Tasks
+
+
+
+</details>
+
+******
+
+
