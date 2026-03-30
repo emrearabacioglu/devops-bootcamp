@@ -149,7 +149,7 @@ root@26cb48b6efb7:/data# exit
 
 ******
 
-### Docker Demo 
+## Docker Demo Projects
 
 
 <details>
@@ -348,7 +348,75 @@ Checked the UI to see whether the changes made in the APP reflected to in the da
 <summary>Dockerfile - Build your own Docker Image</summary>
  <br />
 
-**content will be here**
+### Demo Project: Containerizing a Node.js Application
+
+#### Project Overview
+Demonstrated the end-to-end process of containerizing a custom Node.js application. Engineered a `Dockerfile`, managed the image build process with version tagging, and orchestrated the underlying database infrastructure utilizing Docker Compose. Verified the final deployment through interactive internal container debugging.
+
+#### Infrastructure Orchestration
+Configured and deployed a multi-container database stack (MongoDB and Mongo Express) using a declarative Docker Compose workflow to support the application backend.
+
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app/app# docker-compose -f mongo.yaml up
+    WARN[0000] /mnt/c/Users/emrea/js-app/app/mongo.yaml: the attribute `version` is obsolete...
+    [+] up 3/3
+     ✔ Network app_default           Created                                                                                                                                                             0.0s
+     ✔ Container app-mongo-express-1 Created                                                                                                                                                             0.2s
+     ✔ Container app-mongodb-1       Created                                                                                                                                                             0.1s
+```
+
+#### Application Containerization (Dockerfile)
+Developed a `Dockerfile` utilizing the lightweight `node:20-alpine` base image. Injected necessary environment variables, established secure working directories, mapped the source code, and managed node dependencies dynamically.
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app/app# cat Dockerfile
+    FROM node:20-alpine
+
+    ENV MONGO_DB_USERNAME=admin \
+        MONGO_DB_PWD=password
+
+    RUN mkdir -p /home/app
+
+    COPY ./app /home/app
+
+    WORKDIR /home/app
+
+    RUN npm install
+
+    CMD ["node", "server.js"]
+```
+#### Image Construction and Iteration
+Built the custom Docker image and tagged it for version control (`my-app:1.0`). Successfully troubleshot and resolved initial pathing conflicts by restructuring the local build context and modifying the `WORKDIR` before finalizing the build.
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app/app# docker build -t my-app:1.0 .
+    [+] Building 14.8s (11/11) FINISHED                                                               docker:default
+     => [internal] load build definition from Dockerfile                                                        0.0s
+     => => transferring dockerfile: 225B                                                                        0.0s
+     => [internal] load metadata for docker.io/library/node:20-alpine                                           1.0s
+     => [internal] load build context                                                                           0.3s
+     => => transferring context: 6.08MB                                                                         0.3s
+     => [3/5] COPY ./app /home/app                                                                              0.1s
+     => [4/5] WORKDIR /home/app                                                                                 0.0s
+     => [5/5] RUN npm install                                                                                   9.9s
+     => exporting to image                                                                                      3.4s
+     => => naming to docker.io/library/my-app:1.0                                                               0.0s
+```
+#### Deployment and Internal Validation
+Deployed the constructed application image in detached mode. Accessed the isolated container environment interactively via a shell to validate the directory structure, dependencies, and runtime variables.
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app/app# docker run -d my-app:1.0
+    059e8cd35881d2b85b3f5219df7cb094759705fa69c055e86d5552fedc0c5344
+
+    root@PC:/mnt/c/Users/emrea# docker exec -it 059e8cd35881 /bin/sh
+    /home/app # ls
+    images             index.html         node_modules       package-lock.json  package.json       server.js
+```
+    
+#### Command Summary
+
+* `docker build -t [name:tag] .`: Constructs a Docker image from a local `Dockerfile` and assigns it a specific version tag.
+* `docker rmi [image]`: Removes a specific Docker image from the local registry to free up space.
+* `docker rm [container_id]`: Deletes a stopped or exited container.
+* `docker exec -it [container_id] /bin/sh`: Opens an interactive shell session inside a running container for direct debugging and exploration.
  
 </details>
 
