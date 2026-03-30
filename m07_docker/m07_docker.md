@@ -147,6 +147,23 @@ ede91111c847   postgres:13.10   "docker-entrypoint.s…"   11 minutes ago   Up 1
 
 ******
 
-Deploy Nexus as Docker Container
+<details>
+<summary>Deploy Nexus as Docker Container</summary>
+ <br />
+ 
+**content will be here**
+ 
+</details>
 
-Docker Best Practices
+******
+
+<details>
+<summary>Docker Best Practices</summary>
+ <br />
+ 
+**content will be here**
+ 
+</details>
+
+******
+
