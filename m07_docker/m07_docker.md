@@ -426,8 +426,108 @@ Deployed the constructed application image in detached mode. Accessed the isolat
 <summary>Private Docker Repository</summary>
  <br />
 
-**content will be here**
- 
+### Demo Project: Integrating Docker with Nexus Repository Manager
+
+#### Project Overview
+
+Demonstrated the configuration and integration of Sonatype Nexus as a private Docker registry. Provisioned a Docker-hosted repository, established Role-Based Access Control (RBAC), and configured droplet firewalls. Successfully authenticated the local Docker CLI with the remote Nexus server, tagged a local application image, and securely pushed the artifact to the private registry. Verified the deployment state via the Nexus REST API.
+
+#### Infrastructure & Access Configuration
+Configured a new Docker Hosted repository on Nexus with a dedicated repository connector on port 8083. Established specific user roles for secure access. Modified the droplet's firewall rules to expose port 8083 and enabled the "Docker Bearer Token Realm" in Nexus for authentication. Configured the local Docker Desktop engine to accept the Nexus IP and port as an insecure registry.
+
+<img width="1584" height="1075" alt="image" src="https://github.com/user-attachments/assets/de4fb996-b582-4d2b-840c-6e9761c73d5c" />
+
+<img width="1668" height="683" alt="image" src="https://github.com/user-attachments/assets/f1c82796-1769-492d-8704-12c095f3bb4a" />
+
+
+
+#### Registry Authentication
+Authenticated the local Docker CLI with the remote Nexus repository using the configured repository credentials.
+```bash
+    root@PC:/mnt/c/Users/emrea# docker login 46.101.180.141:8083
+    Username: emre
+    Password:
+    Error response from daemon: login attempt to http://46.101.180.141:8083/v2/ failed with status: 401 Unauthorized
+    root@PC:/mnt/c/Users/emrea# docker login 46.101.180.141:8083
+    Username: emre
+    Password:
+    Login Succeeded
+```
+#### Artifact Preparation
+Identified the target local Node.js application image (`my-app:1.0`) and tagged it to align with the remote Nexus repository's routing structure.
+```bash
+    root@PC:/mnt/c/Users/emrea# docker images
+                                                                                                                     i Info →   U  In Use
+    IMAGE                  ID             DISK USAGE   CONTENT SIZE   EXTRA
+    ...
+    my-app:1.0             e18236b5d15e        325MB         70.2MB   U
+    ...
+    root@PC:/mnt/c/Users/emrea# docker tag my-app:1.0 46.101.180.141:8083/my-app:1.0
+    root@PC:/mnt/c/Users/emrea# docker images | grep my-app
+    WARNING: This output is designed for human readability. For machine-readable output, please use --format.
+    46.101.180.141:8083/my-app:1.0   e18236b5d15e        325MB         70.2MB   U
+    my-app:1.0                       e18236b5d15e        325MB         70.2MB   U
+```
+#### Artifact Deployment
+Executed the push command to upload the tagged Docker image to the Nexus private repository.
+```bash
+    root@PC:/mnt/c/Users/emrea# docker push 46.101.180.141:8083/my-app:1.0
+    The push refers to repository [46.101.180.141:8083/my-app]
+    0833ce1427bb: Pushed
+    589002ba0eae: Pushed
+    43867c4bf195: Pushed
+    d7f6aca05b78: Pushed
+    4f4fb700ef54: Pushed
+    6997feec4bf3: Pushed
+    62e0e1181d88: Pushed
+    1fc98b148f65: Pushed
+    c7734204880f: Pushed
+    1.0: digest: sha256:e18236b5d15efc36509934d76863dc051371070b1b852dac07dec857822c596e size: 856
+```
+#### Deployment Verification via API
+Verified the successful artifact upload by querying the Nexus REST API directly from the terminal, confirming the presence and metadata of the pushed Docker image.
+```bash
+    root@PC:/mnt/c/Users/emrea# curl -u emre:12345678 -X GET '46.101.180.141:8081/service/rest/v1/components?repository=docker-hosted'
+    {
+      "items" : [ {
+        "id" : "ZG9ja2VyLWhvc3RlZDo0ZjFiYmNkZA",
+        "repository" : "docker-hosted",
+        "format" : "docker",
+        "group" : "",
+        "name" : "my-app",
+        "version" : "1.0",
+        "assets" : [ {
+          "downloadUrl" : "http://46.101.180.141:8081/repository/docker-hosted/v2/my-app/manifests/1.0",
+          "path" : "/v2/my-app/manifests/1.0",
+          "id" : "ZG9ja2VyLWhvc3RlZDphMmEwMTBmMw",
+          "repository" : "docker-hosted",
+          "format" : "docker",
+          "checksum" : {
+            "sha256" : "e18236b5d15efc36509934d76863dc051371070b1b852dac07dec857822c596e",
+            "sha1" : "ee76f1c7bcaa1c779b15fc8c0f9ecbb45ee2f7a1"
+          },
+          "contentType" : "application/vnd.oci.image.index.v1+json",
+          "lastModified" : "2026-03-31T07:21:38.547+00:00",
+          "lastDownloaded" : null,
+          "uploader" : "emre",
+          "uploaderIp" : "195.174.91.61",
+          "fileSize" : 856,
+          "blobCreated" : "2026-03-31T07:21:38.549+00:00",
+          "blobStoreName" : "mystore",
+          "docker" : { }
+        } ]
+      } ],
+      "continuationToken" : null
+    }
+```
+#### Deployment Verification via Browser
+
+<img width="1788" height="1101" alt="image" src="https://github.com/user-attachments/assets/627f9d82-5902-4f9b-91dd-88691253dfb2" />
+
+#### Command Summary
+* `docker login [server:port]`: Authenticates the local Docker client against a remote registry.
+* `docker tag [source] [target]`: Creates an alias for an existing image to match the routing structure of a remote repository.
+
 </details>
 
 ******
