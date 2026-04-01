@@ -601,21 +601,111 @@ Tailed the unified logs of the Compose stack to verify the operational status of
 
 ******
 
-<details>
-<summary>Docker Volumes - Persisting Data</summary>
- <br />
-
-**content will be here**
- 
-</details>
-
-******
 
 <details>
 <summary>Docker Volumes Demo</summary>
  <br />
 
-**content will be here**
+### Demo Project: Docker Compose Orchestration and Persistent Volumes
+
+#### Project Overview
+Demonstrated the deployment and management of a stateful multi-container application architecture. Integrated Docker named volumes for database persistence, performed network troubleshooting, and verified raw data access using both temporary utility containers and direct container execution. 
+
+#### Infrastructure Configuration and Deployment
+Configured a declarative `docker-compose.yaml` stack containing MongoDB and Mongo-Express. Implemented a persistent named volume (`mongo-data`) to ensure database records survive across container lifecycles and rebuilds.
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app# cat docker-compose.yaml
+    version: '3'
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+        environment:
+          - MONGO_INITDB_ROOT_USERNAME=admin
+          - MONGO_INITDB_ROOT_PASSWORD=password
+        volumes:
+          - mongo-data:/data/db
+      mongo-express:
+        image: mongo-express
+        ports:
+          - 8081:8081
+        restart: always
+		      environment:
+	      	- ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      		- ME_CONFIG_MONGODB_ADMINPASSWORD=password
+	      	- ME_CONFIG_BASICAUTH_USERNAME=user
+      		- ME_CONFIG_BASICAUTH_PASSWORD=pass
+	      	- ME_CONFIG_MONGODB_SERVER=mongodb
+      		- ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017
+     	volumes:
+     	mongo-data:
+		        
+```
+#### Container Lifecycle and Network Troubleshooting
+Encountered a container crash loop (`Connection refused`) due to stale network configuration and locked ports. Remediated the issue by completely tearing down the environment to release the ports, and initializing a clean deployment. Verified successful authentication between the UI and database. Separately executed and gracefully terminated the backend Node.js application (`SIGINT`).
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app# docker-compose -f docker-compose.yaml down
+    WARN[0000] /mnt/c/Users/emrea/js-app/docker-compose.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+    [+] down 3/3
+     ✔ Container js-app-mongodb-1       Removed                                                                                                                                                             0.5s
+     ✔ Container js-app-mongo-express-1 Removed                                                                                                                                                             0.4s
+     ✔ Network js-app_default           Removed                                                                                                                                                             0.3s
+    root@PC:/mnt/c/Users/emrea/js-app# docker-compose -f docker-compose.yaml up
+    ...
+    mongodb-1        | {"t":{"$date":"2026-04-01T10:55:46.897+00:00"},"s":"I",  "c":"ACCESS",   "id":5286306, "ctx":"conn3","msg":"Successfully authenticated","attr":{"client":"172.20.0.3:44890"...
+    mongo-express-1  | Mongo Express server listening at http://0.0.0.0:8081
+    ...
+    root@PC:/mnt/c/Users/emrea/js-app# cd app/
+    root@PC:/mnt/c/Users/emrea/js-app/app# node server.js
+    app listening on port 3000!
+    ^C
+```
+#### Persistent Volume Inspection and Verification
+Demonstrated deep-level access to Docker's isolated storage structure on the host machine. Utilized inspection tools to identify the physical mount point. Verified the physical presence of MongoDB's raw WiredTiger (`.wt`) files by mounting the data volume into an ephemeral Alpine Linux container, and cross-referenced the data by executing a shell directly inside the active database container.
+```bash
+	   root@PC:/var/lib/docker-desktop# docker volume ls
+	   DRIVER    VOLUME NAME
+	   local     2ab757f64de3d7985d9fb52d6bce93f117e9cd27b4fdfe971153459e6e2fe7a7
+	   local     3dc8b4919bc0b0338362997f8cd6f2fcae1215c5dd9a35d853c7e5caf20f32d2
+      ...
+	   local     js-app_mongo-data
+
+    root@PC:/var/lib/docker-desktop# docker volume inspect js-app_mongo-data
+    [
+        {
+            "CreatedAt": "2026-04-01T10:55:40Z",
+            "Driver": "local",
+            "Mountpoint": "/var/lib/docker/volumes/js-app_mongo-data/_data",
+            "Name": "js-app_mongo-data",
+            "Options": null,
+            "Scope": "local"
+        }
+    ]
+    ...
+    root@PC:/var/lib/docker-desktop# docker run -it --rm -v js-app_mongo-data:/data alpine sh
+    / # ls -la /data
+    total 472
+    -rw-------    1 999      ping         86016 Apr  1 11:28 WiredTiger.wt
+    -rw-------    1 999      ping         36864 Apr  1 10:59 _mdb_catalog.wt
+    -rw-------    1 999      ping         20480 Apr  1 11:05 collection-09c78a08-f867-47ab-8320-b7edea2ac2a6.wt
+    ...
+    / # exit
+    root@PC:/var/lib/docker-desktop# docker exec -it 8ddd6205ccc8 sh
+    # ls /data/db
+    WiredTiger.wt      _mdb_catalog.wt    collection-09c78a08-f867-47ab-8320-b7edea2ac2a6.wt  ...
+```
+#### UI Verification
+Restarted the container and browsed DB to check if the changes i made was sadev.
+<img width="1552" height="481" alt="image" src="https://github.com/user-attachments/assets/ec419252-fc3e-4c29-8e59-464f4f22b609" />
+
+
+#### Command Summary
+
+* `docker volume ls`: Lists all persistent storage volumes currently managed by the Docker engine.
+* `docker volume inspect`: Retrieves detailed JSON metadata for a specific volume, exposing its physical host path.
+* `docker run -it --rm -v [vol]:[path] alpine sh`: Spawns a temporary, interactive utility container to access and inspect isolated volume data directly, automatically destroying itself upon exit.
+* `docker exec -it [container_id] sh`: Injects an interactive shell session inside an existing, running container to inspect its live internal file system.
  
 </details>
 
