@@ -715,8 +715,74 @@ Restarted the container and browsed DB to check if the changes i made was sadev.
 <summary>Deploy Nexus as Docker Container</summary>
  <br />
  
-**content will be here**
- 
+### Demo Project: Containerized Nexus Repository Deployment
+
+#### Project Overview
+Demonstrated the provisioning of cloud infrastructure and the containerized deployment of Sonatype Nexus3. Configured persistent storage volumes, validated internal container environments, and successfully extracted initial credentials for browser-based access.
+
+#### Infrastructure Setup and Docker Installation
+Established a secure remote connection to a newly provisioned Ubuntu Droplet attached to an existing firewall. Updated system package repositories and installed the Docker engine via Snap to prepare the host environment for containerization.
+```bash
+    root@PC:/mnt/c/Users/emrea# ssh root@167.172.185.199
+    Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.8.0-71-generic x86_64)
+    ...
+    root@ubuntu-docker-nexus:~# apt update
+    Hit:1 http://security.ubuntu.com/ubuntu noble-security InRelease
+    ...
+    root@ubuntu-docker-nexus:~# snap install docker
+    2026-04-01T12:33:19Z INFO Waiting for automatic snapd restart...
+    docker 28.4.0 from Canonical✓ installed
+```
+#### Persistent Storage Configuration
+Created a dedicated Docker volume named `nexus-data` to ensure the persistence of repository artifacts and configurations independent of the container's lifecycle. Inspected the volume metadata to locate its exact physical mount point on the host filesystem.
+```bash
+    root@ubuntu-docker-nexus:~# docker volume create --name nexus-data
+    nexus-data
+    root@ubuntu-docker-nexus:~# docker inspect nexus-data
+    [
+        {
+            "CreatedAt": "2026-04-01T12:36:10Z",
+            "Driver": "local",
+            "Labels": null,
+            "Mountpoint": "/var/snap/docker/common/var-lib-docker/volumes/nexus-data/_data",
+            "Name": "nexus-data",
+            "Options": null,
+            "Scope": "local"
+        }
+    ]
+```
+#### Nexus Container Deployment and Network Verification
+Deployed the Sonatype Nexus3 image as a background process, mapping host port 8081 to the container and attaching the persistent volume. Verified active listeners and confirmed the container's running status.
+```bash
+    root@ubuntu-docker-nexus:~# docker run -d -p 8081:8081 --name nexus -v nexus-data:/nexus-data sonatype/nexus3
+    ...
+    Status: Downloaded newer image for sonatype/nexus3:latest
+    25ede0c09d791109d3973499dfee73715ba5022814afdd6c04cd8c24f5482f2a
+    ...
+    root@ubuntu-docker-nexus:~# netstat -lnpt
+    Active Internet connections (only servers)
+    Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+    tcp        0      0 0.0.0.0:8081            0.0.0.0:* LISTEN      3820/docker-proxy
+    ...
+    root@ubuntu-docker-nexus:~# docker ps
+    CONTAINER ID   IMAGE             COMMAND                  CREATED              STATUS              PORTS                                       NAMES
+    25ede0c09d79   sonatype/nexus3   "/opt/sonatype/nexus…"   About a minute ago   Up About a minute   0.0.0.0:8081->8081/tcp, [::]:8081->8081/tcp   nexus
+```
+#### Persistent Volume Verification and Cross-Environment Inspection
+Verified the successful attachment of the Docker volume by cross-referencing the physical directory contents on the host machine against the mapped directory inside the active container. Inspected the host's volume path and executed an interactive shell session within the container to confirm identical file structures, successfully demonstrating accurate data mapping and persistence.
+```bash
+    root@ubuntu-docker-nexus:~# ls /var/snap/docker/common/var-lib-docker/volumes/nexus-data/_data
+    blobs  clean_cache  db  downloads  etc  javaprefs  keystores  log  restore-from-backup  tmp
+    root@ubuntu-docker-nexus:~# docker exec -it 25ede0c09d79 /bin/bash
+    bash-5.1$ ls
+    nexus  sonatype-work  start-nexus-repository-manager.sh
+    bash-5.1$ cd /
+    bash-5.1$ ls
+    afs  boot  etc   lib    media  nexus-data  proc  run   srv  tmp  var
+    bin  dev   home  lib64  mnt    opt         root  sbin  sys  usr
+    bash-5.1$ ls nexus-data/
+    blobs  clean_cache  db  downloads  etc  javaprefs  keystores  log  restore-from-backup  tmp
+ ```
 </details>
 
 ******
