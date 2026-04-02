@@ -212,14 +212,71 @@ Conducted rigorous testing to verify data persistence. Inspected the created nam
 ******
 
 <details>
-<summary>EXERCISE 4: Dockerize your Java Application</summary>
+<summary>EXERCISE 4: Dockerizing Java Application</summary>
 <br />
 
-Now you are done with testing the application locally with Mysql database and want to deploy it on the server to make it accessible for others in the team, so they can edit information.
+#### Project Overview
+Demonstrated the end-to-end containerization of a compiled Java Spring Boot application. Engineered a lightweight, secure Dockerfile, built the custom image.
 
-And since your DB and DB UI are running as docker containers, you want to make your app also run as a docker container. So you can all start them using 1 docker-compose file on the server. So you do the following:
+#### Dockerfile Configuration and Image Build
+Authored a Dockerfile utilizing a minimal `eclipse-temurin:17-jre-alpine` base image to optimize security and footprint. Configured a non-root user (`appuser`) for secure execution and defined the application's entry point. Successfully compiled the configuration into a tagged Docker image (`java-app:1.0`).
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# cat Dockerfile
+    FROM eclipse-temurin:17-jre-alpine
 
-Create a Dockerfile for your java application
+    WORKDIR /home/app
+
+    COPY build/libs/docker-exercises-project-1.0-SNAPSHOT.jar app.jar
+
+    RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+    USER appuser
+
+    CMD [ "java", "-jar", "app.jar" ]
+    
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker build -t java-app:1.0 .
+    [+] Building 8.5s (10/10) FINISHED                                                                                                                                                               docker:default
+     => [internal] load build definition from Dockerfile                                                                                                                                                       0.1s
+     => => transferring dockerfile: 278B                                                                                                                                                                       0.0s
+     => [internal] load metadata for docker.io/library/eclipse-temurin:17-jre-alpine                                                                                                                           1.9s
+     => [1/4] FROM docker.io/library/eclipse-temurin:17-jre-alpine@sha256:7aa804a1824d18d06c68598fe1c2953b5b203823731be7b9298bb3e0f1920b0d                                                                     4.3s
+     => [internal] load build context                                                                                                                                                                          0.6s
+     => => transferring context: 27.27MB                                                                                                                                                                       0.6s
+     => [2/4] WORKDIR /home/app                                                                                                                                                                                0.1s
+     => [3/4] COPY build/libs/docker-exercises-project-1.0-SNAPSHOT.jar app.jar                                                                                                                                0.1s
+     => [4/4] RUN addgroup -S appgroup && adduser -S appuser -G appgroup                                                                                                                                       0.4s
+     => exporting to image                                                                                                                                                                                     1.4s
+     => => naming to docker.io/library/java-app:1.0                                                                                                                                                            0.0s
+```
+
+#### Network Integration and Deployment
+Resolved connectivity limitations by dynamically injecting database credentials (`-e`) and attaching the container directly to the existing backend network (`--network docker-exercises_default`). The embedded Tomcat server successfully established a database connection and initialized on port 8080.
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker run \
+    > -p 8080:8080 \
+    > --network docker-exercises_default \
+    > -e DB_USER=admin \
+    > -e DB_PWD=pass \
+    > -e DB_SERVER=mysql \
+    > -e DB_NAME=project \
+    > java-app:1.0
+
+      .   ____          _            __ _ _
+     /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+    ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+     \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+      '  |____| .__|_| |_|_| |_\__, | / / / /
+     =========|_|==============|___/=/_/_/_/
+
+     :: Spring Boot ::                (v3.5.5)
+
+    2026-04-02T19:15:01.192Z  INFO 1 --- [           main] com.example.Application                  : Starting Application v1.0-SNAPSHOT using Java 17.0.18 with PID 1 (/home/app/app.jar started by appuser in /home/app)
+    2026-04-02T19:15:02.323Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+    2026-04-02T19:15:02.909Z  INFO 1 --- [           main] com.example.Application                  : Java app started
+    2026-04-02T19:15:03.002Z  INFO 1 --- [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+    2026-04-02T19:15:03.324Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+    2026-04-02T19:15:03.352Z  INFO 1 --- [           main] com.example.Application                  : Started Application in 2.686 seconds (process running for 3.257)
+```
 
 </details>
 
