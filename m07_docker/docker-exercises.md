@@ -283,13 +283,52 @@ Resolved connectivity limitations by dynamically injecting database credentials 
 ******
 
 <details>
-<summary>EXERCISE 5: Build and push Java Application Docker Image</summary>
+<summary>EXERCISE 5: Private Docker Registry Integration and Image Publishing</summary>
 <br />
 
-Now for you to be able to run your java app as a docker image on a remote server, it must be first hosted on a docker repository, so you can fetch it from there on the server. Therefore, you have to do the following:
+#### Overview
+Demonstrated the configuration and utilization of a private Docker registry using Sonatype Nexus Repository Manager. Overcame Docker Engine security constraints for HTTP communication, authenticated with the remote server, and successfully published a locally built Java application image to the centralized private repository.
 
-Create a docker hosted repository on Nexus
-Build the image locally and push to this repository
+#### Infrastructure Configuration
+Provisioned a new Docker hosted repository within the remote Nexus instance, exposing it on port 8083. Modified the local Docker daemon configuration (`daemon.json`) to include the remote server (`167.172.185.199:8083`) in the `insecure-registries` list. This architectural adjustment allowed plain HTTP communication for internal testing, bypassing Docker's default HTTPS requirement.
+
+<img width="1426" height="1125" alt="image" src="https://github.com/user-attachments/assets/1d4aa083-b11d-47cb-818a-39ed64443a0b" />
+
+<img width="1325" height="560" alt="image" src="https://github.com/user-attachments/assets/c892c476-16e5-4606-97f7-394ed780f5dd" />
+
+#### Authentication and Image Preparation
+Established an authenticated session with the remote Nexus registry using explicit credentials. Identified the target local image (`java-app:1.0`) and applied a new tag matching the remote registry's DNS/IP and port routing schema. This retagging is a structural prerequisite for the Docker push mechanism to identify the correct destination.
+```bash
+    root@PC:/mnt/c/Users/emrea# docker login 167.172.185.199:8083
+    Username: admin
+    Password:
+    Login Succeeded
+
+    root@PC:/mnt/c/Users/emrea# docker tag java-app:1.0 167.172.185.199:8083/java-app:1.0
+
+    root@PC:/mnt/c/Users/emrea# docker images | grep java-app
+    WARNING: This output is designed for human readability. For machine-readable output, please use --format.
+    167.172.185.199:8083/java-app:1.0   681007381347        308MB         92.6MB   U
+    java-app:1.0                        681007381347        308MB         92.6MB   U
+```
+#### Image Publishing
+Executed the push operation to transfer the tagged image layers from the local machine directly into the Nexus repository. Validated the upload through the terminal output, confirming the successful transfer of all individual layers and the generation of the final SHA256 digest (`6810073813479e36...`).
+```bash
+    root@PC:/mnt/c/Users/emrea# docker push 167.172.185.199:8083/java-app:1.0
+    The push refers to repository [167.172.185.199:8083/java-app]
+    4adb00321f3d: Pushed
+    4ebe7a5b83ce: Pushed
+    be9a4d7813fc: Pushed
+    2b28c8d76488: Pushed
+    589002ba0eae: Pushed
+    b50a56d2ab38: Pushed
+    5e1c552ce83f: Pushed
+    8a88a697ab44: Pushed
+    b262b9a9131a: Pushed
+    1.0: digest: sha256:6810073813479e36333529b8a16fd25eee893a5c19ab517d6079b62a017c7697 size: 856
+```
+<img width="2000" height="879" alt="image" src="https://github.com/user-attachments/assets/6d1b0759-878c-4486-b9da-62a76f1e2062" />
+
 
 </details>
 
@@ -314,10 +353,6 @@ mysql:
     timeout: 5s
     retries: 5
 ```
-Now your app and Mysql containers in your docker-compose are using environment variables.
-
-Make all these environment variable values configurable, by setting them on the server when deploying.
-INFO: Again, since docker-compose is part of your application and checked in to the repo, it shouldn't contain any sensitive data. But also allow configuring these values from outside based on an environment
 
 </details>
 
