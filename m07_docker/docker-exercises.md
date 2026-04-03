@@ -335,24 +335,102 @@ Executed the push operation to transfer the tagged image layers from the local m
 ******
 
 <details>
-<summary>EXERCISE 6: Add application to docker-compose</summary>
+<summary>EXERCISE 6: Multi-Container Orchestration and Environment Management</summary>
 <br />
 
-Add your application's docker image to docker-compose. Configure all needed env vars.
-TIP: Ensure you configure a health check on your mysql container by including the following in your docker-compose file:
+#### Project Overview
+Orchestrated a secure, multi-container architecture consisting of a Java Spring Boot application, a MySQL database, and a phpMyAdmin client using Docker Compose. Engineered the deployment to securely decouple sensitive credentials from the repository by leveraging an external `.env` file. Implemented native service health checks to guarantee strict container initialization sequencing and prevent startup race conditions.
 
-```yaml
-my-java-app:
-  depends_on:
-    mysql:
-      condition: service_healthy
-mysql:
-  healthcheck:
-    test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-    interval: 10s
-    timeout: 5s
-    retries: 5
+#### Configuration and Environment Management
+Authored a `java-app.yaml` Docker Compose manifest defining the service topology, explicit port bindings, and persistent data volumes. Replaced hardcoded credentials with dynamic environment variables (`${VAR}`), ensuring the deployment automatically injects parameters securely sourced from the local `.env` file. 
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# cat .env
+    DB_USER=admin
+    DB_PWD=pass
+    DB_SERVER=mysql
+    DB_NAME=project
+    MYSQL_ROOT_PASSWORD=pass
+    PMA_HOST=mysql
+    PMA_PORT=3306
+
+    root@PC:/mnt/c/Users/emrea/docker-exercises# cat java-app.yaml
+    version: '3.8'
+    services:
+      java-app:
+        image: java-app:1.0
+        container_name: java-app-composed
+        ports:
+          - 8080:8080
+        environment:
+          - DB_USER=${DB_USER}
+          - DB_PWD=${DB_PWD}
+          - DB_SERVER=${DB_SERVER}
+          - DB_NAME=${DB_NAME}
+        depends_on:
+          mysql:
+            condition: service_healthy
+      mysql:
+        image: mysql
+        container_name: mysql
+        ports:
+          - 3306:3306
+        environment:
+          - MYSQL_USER=${DB_USER}
+          - MYSQL_PASSWORD=${DB_PWD}
+          - MYSQL_DATABASE=${DB_NAME}
+          - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        volumes:
+          - mysql-data:/var/lib/mysql
+        healthcheck:
+          test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+      phpmyadmin:
+        image: phpmyadmin
+        container_name: phpmyadmin
+        ports:
+          - 8088:80
+        environment:
+          - PMA_HOST=${PMA_HOST}
+          - PMA_PORT=${PMA_PORT}
+          - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        depends_on:
+          - mysql
+    volumes:
+      mysql-data:
+        driver: local
 ```
+#### Deployment and Health Check Synchronization
+Executed the orchestrated stack deployment. The integration of the `healthcheck` parameter effectively paused the `java-app` container deployment until the internal `mysqladmin ping` command validated the database's readiness. Log outputs confirm the successful establishment of the isolated bridge network, the "Healthy" status resolution of MySQL, and the subsequent synchronized initialization of the Tomcat server and phpMyAdmin client interfaces.
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker-compose -f java-app.yaml up
+    WARN[0000] /mnt/c/Users/emrea/docker-exercises/java-app.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+    [+] up 4/4
+     ✔ Network docker-exercises_default Created                                                                                                                                                            0.1s
+     ✔ Container mysql                  Created                                                                                                                                                            0.1s
+     ✔ Container java-app-composed      Created                                                                                                                                                            0.1s
+     ✔ Container phpmyadmin             Created                                                                                                                                                            0.2s
+    Attaching to java-app-composed, mysql, phpmyadmin
+    ...
+    mysql       | 2026-04-03T18:40:02.622483Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+    mysql       | 2026-04-03T18:40:03.276000Z 0 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '9.6.0'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.
+    Container mysql Healthy
+    java-app-composed  |
+    java-app-composed  |  :: Spring Boot ::                (v3.5.5)
+    java-app-composed  |
+    java-app-composed  | 2026-04-03T18:40:13.516Z  INFO 1 --- [           main] com.example.Application                  : Starting Application v1.0-SNAPSHOT using Java 17.0.18 with PID 1 (/home/app/app.jar started by appuser in /home/app)
+    java-app-composed  | 2026-04-03T18:40:16.874Z  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+    java-app-composed  | 2026-04-03T18:40:16.913Z  INFO 1 --- [           main] com.example.Application                  : Started Application in 4.059 seconds (process running for 3.984)
+    ...
+    phpmyadmin         | 172.19.0.1 - - [03/Apr/2026:18:40:35 +0000] "GET / HTTP/1.1" 200 6060 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker ps
+    CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS                   PORTS                                         NAMES
+    7b0e998ffdd3   phpmyadmin     "/docker-entrypoint.…"   4 minutes ago   Up 3 minutes             0.0.0.0:8088->80/tcp, [::]:8088->80/tcp       phpmyadmin
+    5cac775ffba0   java-app:1.0   "/__cacert_entrypoin…"   4 minutes ago   Up 3 minutes             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   java-app-composed
+    077d192478cd   mysql          "docker-entrypoint.s…"   4 minutes ago   Up 4 minutes (healthy)   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp   mysql
+```
+
 
 </details>
 
