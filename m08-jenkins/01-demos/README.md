@@ -1,47 +1,6 @@
 ******
 
 <details>
-<summary>Introduction to Build Automation</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-****** 
-
-<details>
-<summary>Install Jenkins</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-<summary>Jenkins UI Tour</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-<summary>Install Build Tools</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
 <summary>Jenkins Basics Demo</summary>
  <br />
  
