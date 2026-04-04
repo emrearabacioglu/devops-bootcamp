@@ -437,31 +437,60 @@ Executed the orchestrated stack deployment. The integration of the `healthcheck`
 ******
 
 <details>
-<summary>EXERCISE 7: Run application on server with docker-compose</summary>
+<summary>EXERCISE 7: Remote Server Deployment & Environment Configuration</summary>
 <br />
 
-Finally your docker-compose file is completed and you want to run your application on the server with docker-compose. For that you need to do the following:
 
-Set insecure docker repository on server, because Nexus uses http
-Run docker login on the server to be allowed to pull the image
-Your application index.html has a hardcoded localhost as a HOST to send requests to the backend. You need to fix that and set the server IP address instead, because the server is going to be the host when you deploy the application on a remote server. (Don't forget to rebuild and push the image and if needed adjust the docker-compose file)
-Copy docker-compose.yaml to the server
-Set the needed environment variables for all containers in docker-compose
-Run docker-compose to start all 3 containers
+#### Application Reconfiguration & Image Build
+Configured the frontend application to point to the remote server's external IP address instead of `localhost`. Recompiled the updated source code, built the new Docker image (`v1.1`), and authenticated with the private Nexus registry to push the artifact securely.
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker build -t 167.172.185.199:8083/java-app:1.1 .
+    [+] Building 3.2s (9/9) FINISHED
+    ...
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker login 167.172.185.199:8083
+    Login Succeeded
+    root@PC:/mnt/c/Users/emrea/docker-exercises# docker push 167.172.185.199:8083/java-app:1.1
+    1.1: digest: sha256:2b39a38154f0868680a22b971a005b2ba1b4aa8f6aa7d0aec2563a4c2d906a36 size: 856
+```
+#### Server Provisioning & Security Configuration
+Transferred the necessary deployment manifests (`docker-compose.yaml` and `.env`) to the remote Ubuntu server utilizing secure copy protocol. Adjusted the Docker daemon configuration on the server to allow insecure HTTP connections to the private Nexus repository and restarted the Docker service to apply the registry bypass.
+```bash
+    root@PC:/mnt/c/Users/emrea/docker-exercises# scp java-app.yaml .env root@167.172.185.199:/root/
+    java-app.yaml                                                                 100% 1104    25.0KB/s   00:00
+    .env                                                                          100%  112     2.7KB/s   00:00
+    ...
+    root@ubuntu-docker-nexus:/home/docker-app# echo '{"insecure-registries": ["167.172.185.199:8083"]}' > /var/snap/docker/current/config/daemon.json
+    root@ubuntu-docker-nexus:/home/docker-app# snap restart docker
+    Restarted.
+```
+#### Multi-Container Orchestration & Validation
+Authenticated the remote server with the private Nexus registry and pulled the updated application image. Deployed the multi-container stack architecture (Java App, MySQL, phpMyAdmin, and Nexus) utilizing an explicit environment variables file (`vars.env`) to ensure secure credential injection while circumventing OS-level hidden file restrictions. Verified successful orchestration, container health states, and proper port bindings.
+```bash
+    root@ubuntu-docker-nexus:/home/docker-app# docker login 167.172.185.199:8083
+    Login Succeeded
+    ...
+    root@ubuntu-docker-nexus:/home/docker-app# docker pull 167.172.185.199:8083/java-app:1.1
+    Status: Downloaded newer image for 167.172.185.199:8083/java-app:1.1
+    ...
+    root@ubuntu-docker-nexus:/home/docker-app# docker-compose --env-file vars.env -f java-app.yaml up -d
+    [+] Running 4/4
+     ✔ Network docker-app_default   Created                                                                    0.1s
+     ✔ Container mysql              Healthy                                                                   11.2s
+     ✔ Container phpmyadmin         Started                                                                    1.0s
+     ✔ Container java-app-composed  Started                                                                   11.5s
+    
+    root@ubuntu-docker-nexus:/home/docker-app# docker ps
+    CONTAINER ID   IMAGE                               COMMAND                  CREATED         STATUS                   PORTS                                                                              NAMES
+    f99d716ada06   phpmyadmin                          "/docker-entrypoint.…"   3 minutes ago   Up 3 minutes             0.0.0.0:8088->80/tcp, [::]:8088->80/tcp                                            phpmyadmin
+    d04384c075e7   167.172.185.199:8083/java-app:1.1   "/__cacert_entrypoin…"   3 minutes ago   Up 3 minutes             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp                                         java-app-composed
+    6584072b48a8   mysql                               "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp, 33060/tcp                              mysql
+    7558cf768f95   sonatype/nexus3                     "/opt/sonatype/nexus…"   11 hours ago    Up 35 minutes            0.0.0.0:8081->8081/tcp, [::]:8081->8081/tcp, 0.0.0.0:8083->8083/tcp, [::]:8083->8083/tcp   nexus
+```
+<img width="855" height="704" alt="image" src="https://github.com/user-attachments/assets/10788d37-1843-4c9e-a603-e738444e1f26" />
+<img width="1272" height="638" alt="image" src="https://github.com/user-attachments/assets/1a4ec685-4a96-4072-833a-0de7d4044c5c" />
+
 
 </details>
 
 ******
 
-<details>
-<summary>EXERCISE 8: Open ports</summary>
-<br />
-
-Congratulations! Your application is running on the server, but you still can't access the application from the browser. You know you need to configure firewall settings. So do the following:
-
-Open the necessary port on the server firewall and
-Test access from the browser
-
-</details>
-
-******
