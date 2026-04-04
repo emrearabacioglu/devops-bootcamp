@@ -1,6 +1,6 @@
 ******
 <details>
-<summary>EXERCISE 1: Install Nexus on a server</summary>
+<summary>PROJECT 1: Install Nexus on a server</summary>
  <br />
   
 * Already had a server that running nexus from the module demostrations.
@@ -9,7 +9,7 @@
 
 ******
 <details>
-<summary>EXERCISE 2: Create npm hosted repository</summary>
+<summary>PROJECT 2: Create npm hosted repository</summary>
  <br />
 For a Node application:
 
@@ -28,7 +28,7 @@ created repository:
 
 ******
 <details>
-<summary>EXERCISE 3: Create user for team 1</summary>
+<summary>PROJECT 3: Create user for team 1</summary>
  <br />
   
 * Create Nexus user for the project 1 team to have access to this npm repository
@@ -42,7 +42,7 @@ created repository:
 
 ******
 <details>
-<summary>EXERCISE 4: Build and publish npm tar</summary>
+<summary>PROJECT 4: Build and publish npm tar</summary>
  <br />
 You want to test that the project 1 user has correct access configured:
 
@@ -115,7 +115,7 @@ Pic from Nexus UI:
 ******
 <details>
   
-<summary>EXERCISE 5: Create maven hosted repository</summary>
+<summary>PROJECT 5: Create maven hosted repository</summary>
  <br />
 For a Java application:
 
@@ -129,7 +129,7 @@ For a Java application:
 ******
 <details>
   
-<summary>EXERCISE 6: Create user for team 2</summary>
+<summary>PROJECT 6: Create user for team 2</summary>
  <br />
  
 * Create a Nexus user for project 2 team to have access to this maven repository
@@ -146,7 +146,7 @@ For a Java application:
 
 ******
 <details>
-<summary>EXERCISE 7: Build and publish jar file</summary>
+<summary>PROJECT 7: Build and publish jar file</summary>
  <br />
   
 You want to test that the project 2 user has the correct access configured and also upload the first version. So:
@@ -184,7 +184,7 @@ Snapshot from the Neexus UI:
 
 ******
 <details>
-<summary>EXERCISE 8: Download from Nexus and start application</summary>
+<summary>PROJECT 8: Download from Nexus and start application</summary>
  <br />
   
 * Create new user for droplet server that has access to both repositories
@@ -225,7 +225,7 @@ root@ubuntu-nexus:~/package# node app/server.js
 
 ******
 <details>
-<summary>EXERCISE 9: Automate</summary>
+<summary>PROJECT 9: Automate</summary>
  <br />
   
 You decide to automate the fetching from Nexus and starting the application So you:
