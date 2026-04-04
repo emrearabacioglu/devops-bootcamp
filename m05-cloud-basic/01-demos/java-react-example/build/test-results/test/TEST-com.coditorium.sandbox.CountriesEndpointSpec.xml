@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.coditorium.sandbox.CountriesEndpointSpec" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-03-27T16:04:12.145Z" hostname="PC" time="3.01">
+  <properties/>
+  <testcase name="should list countries" classname="com.coditorium.sandbox.CountriesEndpointSpec" time="3.006"/>
+  <system-out><![CDATA[19:04:12.195 [Test worker] INFO org.springframework.boot.devtools.restart.RestartApplicationListener -- Restart disabled due to context in which it is running
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.5)
+
+2026-03-27T19:04:12.547+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : Starting CountriesEndpointSpec using Java 17.0.18 with PID 11212 (started by emrea in C:\Users\emrea\IdeaProjects\java-react-example)
+2026-03-27T19:04:12.547+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : No active profile set, falling back to 1 default profile: "default"
+2026-03-27T19:04:13.538+03:00  INFO 11212 --- [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-03-27T19:04:13.553+03:00  INFO 11212 --- [    Test worker] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-27T19:04:13.553+03:00  INFO 11212 --- [    Test worker] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.44]
+2026-03-27T19:04:13.618+03:00  INFO 11212 --- [    Test worker] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-03-27T19:04:13.618+03:00  INFO 11212 --- [    Test worker] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1025 ms
+2026-03-27T19:04:13.742+03:00  INFO 11212 --- [    Test worker] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+2026-03-27T19:04:14.214+03:00  INFO 11212 --- [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 58158 (http) with context path '/'
+2026-03-27T19:04:14.214+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : Started CountriesEndpointSpec in 2.031 seconds (process running for 3.434)
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring TestDispatcherServlet ''
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-03-27T19:04:14.958+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.country.CountriesEndpoint    : GET /countries
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/countries
+       Parameters = {}
+          Headers = []
+             Body = <no character encoding set>
+    Session Attrs = {}
+
+Handler:
+             Type = com.coditorium.sandbox.country.CountriesEndpoint
+           Method = com.coditorium.sandbox.country.CountriesEndpoint#getCountries()
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:"application/json"]
+     Content type = application/json
+             Body = {"countries":["Albania","Andorra","Armenia","Austria","Azerbaijan","Belarus","Belgium","Bosnia and Herzegovina","Bulgaria","Croatia","Cyprus","Czech Republic","Denmark","Estonia","Finland","France","Georgia","Germany","Greece","Hungary","Iceland","Ireland","Italy","Kazakhstan","Kosovo","Latvia","Liechtenstein","Lithuania","Luxembourg","Macedonia","Malta","Moldova","Monaco","Montenegro","Netherlands","Norway","Poland","Portugal","Romania","Russia","San Marino","Serbia","Slovakia","Slovenia","Spain","Sweden","Switzerland","Turkey","Ukraine","United Kingdom","Vatican"]}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

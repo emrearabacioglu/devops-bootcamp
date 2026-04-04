@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="x-ua-compatible" content="IE=edge"/>
+<title>Test results - should list countries</title>
+<link href="../css/base-style.css" rel="stylesheet" type="text/css"/>
+<link href="../css/style.css" rel="stylesheet" type="text/css"/>
+<script src="../js/report.js" type="text/javascript"></script>
+</head>
+<body>
+<div id="content">
+<div class="breadcrumbs">
+<a class="breadcrumb" href="../index.html">all</a> &gt; 
+<a class="breadcrumb" href="index.html">com.coditorium.sandbox.CountriesEndpointSpec</a> &gt; 
+<span class="breadcrumb">should list countries</span>
+</div>
+<div class="tab-container">
+<ul class="tabLinks">
+<li>
+<a class="successGroup" href="#">Gradle Test Run :test</a>
+</li>
+</ul>
+<div class="tab">
+<h2>Gradle Test Run :test</h2>
+<h1>should list countries</h1>
+<div class="tab-container">
+<ul class="tabLinks">
+<li>
+<a class="" href="#">summary</a>
+</li>
+<li>
+<a class="" href="#">standard output</a>
+</li>
+</ul>
+<div class="tab">
+<h2>summary</h2>
+<div>
+<div class="summary">
+<table>
+<tr>
+<td>
+<div class="summaryGroup">
+<table>
+<tr>
+<td>
+<div class="infoBox">
+<div class="counter">1</div>
+<p>tests</p>
+</div>
+</td>
+<td>
+<div class="infoBox">
+<div class="counter">0</div>
+<p>failures</p>
+</div>
+</td>
+<td>
+<div class="infoBox">
+<div class="counter">0</div>
+<p>skipped</p>
+</div>
+</td>
+<td>
+<div class="infoBox duration">
+<div class="counter">3.006s</div>
+<p>duration</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</td>
+<td>
+<div class="infoBox success successRate">
+<div class="percent">100%</div>
+<p>successful</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="tab">
+<h2>standard output</h2>
+<span class="code">
+<pre id="root-0-test-stdout-should list countries">19:04:12.195 [Test worker] INFO org.springframework.boot.devtools.restart.RestartApplicationListener -- Restart disabled due to context in which it is running
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.5)
+
+2026-03-27T19:04:12.547+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : Starting CountriesEndpointSpec using Java 17.0.18 with PID 11212 (started by emrea in C:\Users\emrea\IdeaProjects\java-react-example)
+2026-03-27T19:04:12.547+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : No active profile set, falling back to 1 default profile: &quot;default&quot;
+2026-03-27T19:04:13.538+03:00  INFO 11212 --- [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-03-27T19:04:13.553+03:00  INFO 11212 --- [    Test worker] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-27T19:04:13.553+03:00  INFO 11212 --- [    Test worker] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.44]
+2026-03-27T19:04:13.618+03:00  INFO 11212 --- [    Test worker] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-03-27T19:04:13.618+03:00  INFO 11212 --- [    Test worker] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1025 ms
+2026-03-27T19:04:13.742+03:00  INFO 11212 --- [    Test worker] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page: class path resource [static/index.html]
+2026-03-27T19:04:14.214+03:00  INFO 11212 --- [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 58158 (http) with context path '/'
+2026-03-27T19:04:14.214+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.CountriesEndpointSpec        : Started CountriesEndpointSpec in 2.031 seconds (process running for 3.434)
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring TestDispatcherServlet ''
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-03-27T19:04:14.877+03:00  INFO 11212 --- [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-03-27T19:04:14.958+03:00  INFO 11212 --- [    Test worker] c.c.sandbox.country.CountriesEndpoint    : GET /countries
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/countries
+       Parameters = {}
+          Headers = []
+             Body = &lt;no character encoding set&gt;
+    Session Attrs = {}
+
+Handler:
+             Type = com.coditorium.sandbox.country.CountriesEndpoint
+           Method = com.coditorium.sandbox.country.CountriesEndpoint#getCountries()
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:&quot;application/json&quot;]
+     Content type = application/json
+             Body = {&quot;countries&quot;:[&quot;Albania&quot;,&quot;Andorra&quot;,&quot;Armenia&quot;,&quot;Austria&quot;,&quot;Azerbaijan&quot;,&quot;Belarus&quot;,&quot;Belgium&quot;,&quot;Bosnia and Herzegovina&quot;,&quot;Bulgaria&quot;,&quot;Croatia&quot;,&quot;Cyprus&quot;,&quot;Czech Republic&quot;,&quot;Denmark&quot;,&quot;Estonia&quot;,&quot;Finland&quot;,&quot;France&quot;,&quot;Georgia&quot;,&quot;Germany&quot;,&quot;Greece&quot;,&quot;Hungary&quot;,&quot;Iceland&quot;,&quot;Ireland&quot;,&quot;Italy&quot;,&quot;Kazakhstan&quot;,&quot;Kosovo&quot;,&quot;Latvia&quot;,&quot;Liechtenstein&quot;,&quot;Lithuania&quot;,&quot;Luxembourg&quot;,&quot;Macedonia&quot;,&quot;Malta&quot;,&quot;Moldova&quot;,&quot;Monaco&quot;,&quot;Montenegro&quot;,&quot;Netherlands&quot;,&quot;Norway&quot;,&quot;Poland&quot;,&quot;Portugal&quot;,&quot;Romania&quot;,&quot;Russia&quot;,&quot;San Marino&quot;,&quot;Serbia&quot;,&quot;Slovakia&quot;,&quot;Slovenia&quot;,&quot;Spain&quot;,&quot;Sweden&quot;,&quot;Switzerland&quot;,&quot;Turkey&quot;,&quot;Ukraine&quot;,&quot;United Kingdom&quot;,&quot;Vatican&quot;]}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+</pre>
+<button class="clipboard-copy-btn" aria-label="Copy to clipboard" data-copy-element-id="root-0-test-stdout-should list countries">Copy</button>
+</span>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<p>
+<div>
+<label class="hidden" id="label-for-line-wrapping-toggle" for="line-wrapping-toggle">Wrap lines
+<input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
+</label>
+</div>Generated by 
+<a href="https://www.gradle.org">Gradle 9.4.0</a> at Mar 27, 2026, 7:04:15 PM</p>
+</div>
+</div>
+</body>
+</html>
