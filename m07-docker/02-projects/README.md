@@ -1,6 +1,6 @@
 ******
 <details>
-<summary>EXERCISE 1: Database Containerization and Ephemeral Builds</summary>
+<summary>PROJECT 1: Database Containerization and Ephemeral Builds</summary>
 <br />
   
 #### Project Overview
@@ -9,13 +9,13 @@ Demonstrated the configuration of a local development environment by linking a J
 #### Source Code Inspection and Database Deployment
 Analyzed the application's source code to identify the specific environment variables required for database connectivity. Subsequently, deployed a standalone MySQL database instance utilizing the official Docker image, mapped the necessary ports, and injected the initialization credentials.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# grep -rnw . -e "getenv"
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# grep -rnw . -e "getenv"
     ./src/main/java/com/example/DatabaseConfig.java:14:    private String user = System.getenv("DB_USER");
     ./src/main/java/com/example/DatabaseConfig.java:15:    private String password = System.getenv("DB_PWD");
     ./src/main/java/com/example/DatabaseConfig.java:16:    private String serverName = System.getenv("DB_SERVER"); // db host name, like localhost without the port
     ./src/main/java/com/example/DatabaseConfig.java:17:    private String dbName = System.getenv("DB_NAME");
 
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker run \
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker run \
     > -p 3306:3306 \
     > -e MYSQL_USER=admin \
     > -e MYSQL_PASSWORD=pass \
@@ -26,14 +26,14 @@ Analyzed the application's source code to identify the specific environment vari
     Status: Downloaded newer image for mysql:latest
     d63c55a17107b1bacc6e72cc2343f079329843da81e5238415b6f8bc66f60ab8
 
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker ps
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker ps
     CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS                                       NAMES
     d63c55a17107   mysql     "docker-entrypoint.s…"   12 seconds ago   Up 11 seconds   0.0.0.0:3306->3306/tcp, [::]:3306->3306/tcp   crazy_mahavira
 ```
 #### Ephemeral Application Build Execution
 Encountered local build tool mismatches and deprecation issues during the initial compilation attempts. Mitigated the environment mismatch by provisioning an ephemeral Docker container loaded with a modern Gradle engine and JDK 17, successfully compiling the application source code into a deployable JAR artifact.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker run --rm -v $(pwd):/app -w /app gradle:8.7-jdk17 gradle build
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker run --rm -v $(pwd):/app -w /app gradle:8.7-jdk17 gradle build
     Unable to find image 'gradle:8.7-jdk17' locally
     ...
     Starting a Gradle Daemon (subsequent builds will be faster)
@@ -47,12 +47,12 @@ Encountered local build tool mismatches and deprecation issues during the initia
 #### Environment Configuration and Application Launch
 Configured the host operating system by exporting the targeted database credentials into the shell environment. Launched the compiled Java Spring Boot application, verifying its successful connection to the containerized MySQL database and the initialization of its web servlets to handle browser traffic.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# export DB_USER=admin \
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# export DB_USER=admin \
     > export DB_PWD=pass \
     > export DB_SERVER=localhost \
     > export DB_NAME=project
 
-    root@PC:/mnt/c/Users/emrea/docker-exercises# java -jar build/libs/docker-exercises-project-1.0-SNAPSHOT.jar
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# java -jar build/libs/docker-PROJECTs-project-1.0-SNAPSHOT.jar
     ...
     2026-04-02T11:44:20.519+03:00  INFO 1618 --- [           main] com.example.Application                  : Starting Application v1.0-SNAPSHOT using Java 17.0.18...
     2026-04-02T11:44:22.551+03:00  INFO 1618 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
@@ -67,7 +67,7 @@ Configured the host operating system by exporting the targeted database credenti
 ******
 
 <details>
-<summary>EXERCISE 2: Graphical Database Management Interface Deployment</summary>
+<summary>PROJECT 2: Graphical Database Management Interface Deployment</summary>
 <br />
 
 #### Project Overview
@@ -110,7 +110,7 @@ Validated the operational status of both deployed containers. Confirmed that bot
 ******
 
 <details>
-<summary>EXERCISE 3: Multi-Container Orchestration and Data Persistence with Docker Compose</summary>
+<summary>PROJECT 3: Multi-Container Orchestration and Data Persistence with Docker Compose</summary>
 <br />
 
 #### Project Overview
@@ -119,7 +119,7 @@ Demonstrated the orchestration of a multi-tier database environment using Docker
 #### Infrastructure as Code Configuration
 Authored a `docker-compose.yml` file to define the application stack. Configured port mappings, injected necessary environment variables for authentication, defined inter-container network dependencies (`depends_on`), and mapped a local named volume (`mysql-data`) directly to the MySQL internal data directory (`/var/lib/mysql`).
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# cat mysqldb.yaml
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# cat mysqldb.yaml
     version: '3.8'
     services:
       mysql:
@@ -151,11 +151,11 @@ Authored a `docker-compose.yml` file to define the application stack. Configured
 #### Automated Stack Deployment
 Executed the Compose configuration to automatically provision the isolated network, initialize the persistent volume, and deploy both containers in the correct dependency order.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker-compose -f mysqldb.yaml up
-    WARN[0000] /mnt/c/Users/emrea/docker-exercises/mysqldb.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker-compose -f mysqldb.yaml up
+    WARN[0000] /mnt/c/Users/emrea/docker-PROJECTs/mysqldb.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
     [+] up 4/4
-     ✔ Network docker-exercises_default   Created                                                                                                                                                              0.0s
-     ✔ Volume docker-exercises_mysql-data Created                                                                                                                                                              0.0s
+     ✔ Network docker-PROJECTs_default   Created                                                                                                                                                              0.0s
+     ✔ Volume docker-PROJECTs_mysql-data Created                                                                                                                                                              0.0s
      ✔ Container mysql                    Created                                                                                                                                                              0.2s
      ✔ Container phpmyadmin               Created                                                                                                                                                              0.1s
     Attaching to mysql, phpmyadmin
@@ -173,21 +173,21 @@ Conducted rigorous testing to verify data persistence. Inspected the created nam
 ```bash
     root@PC:/mnt/c/Users/emrea# docker volume ls
     DRIVER    VOLUME NAME
-    local     docker-exercises_mysql-data
+    local     docker-PROJECTs_mysql-data
     ...
 
-    root@PC:/mnt/c/Users/emrea# docker volume inspect docker-exercises_mysql-data
+    root@PC:/mnt/c/Users/emrea# docker volume inspect docker-PROJECTs_mysql-data
     [
         {
             "CreatedAt": "2026-04-02T16:16:24Z",
             "Driver": "local",
-            "Mountpoint": "/var/lib/docker/volumes/docker-exercises_mysql-data/_data",
-            "Name": "docker-exercises_mysql-data",
+            "Mountpoint": "/var/lib/docker/volumes/docker-PROJECTs_mysql-data/_data",
+            "Name": "docker-PROJECTs_mysql-data",
             "Scope": "local"
         }
     ]
 
-    root@PC:/mnt/c/Users/emrea# docker run -ti --rm -v docker-exercises_mysql-data:/data alpine sh
+    root@PC:/mnt/c/Users/emrea# docker run -ti --rm -v docker-PROJECTs_mysql-data:/data alpine sh
     / # ls -la /data/
     total 108496
     -rw-r-----    1 999      ping       4194304 Apr  2 16:18 #ib_16384_0.dblwr
@@ -212,7 +212,7 @@ Conducted rigorous testing to verify data persistence. Inspected the created nam
 ******
 
 <details>
-<summary>EXERCISE 4: Dockerizing Java Application</summary>
+<summary>PROJECT 4: Dockerizing Java Application</summary>
 <br />
 
 #### Project Overview
@@ -221,12 +221,12 @@ Demonstrated the end-to-end containerization of a compiled Java Spring Boot appl
 #### Dockerfile Configuration and Image Build
 Authored a Dockerfile utilizing a minimal `eclipse-temurin:17-jre-alpine` base image to optimize security and footprint. Configured a non-root user (`appuser`) for secure execution and defined the application's entry point. Successfully compiled the configuration into a tagged Docker image (`java-app:1.0`).
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# cat Dockerfile
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# cat Dockerfile
     FROM eclipse-temurin:17-jre-alpine
 
     WORKDIR /home/app
 
-    COPY build/libs/docker-exercises-project-1.0-SNAPSHOT.jar app.jar
+    COPY build/libs/docker-PROJECTs-project-1.0-SNAPSHOT.jar app.jar
 
     RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
@@ -234,7 +234,7 @@ Authored a Dockerfile utilizing a minimal `eclipse-temurin:17-jre-alpine` base i
 
     CMD [ "java", "-jar", "app.jar" ]
     
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker build -t java-app:1.0 .
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker build -t java-app:1.0 .
     [+] Building 8.5s (10/10) FINISHED                                                                                                                                                               docker:default
      => [internal] load build definition from Dockerfile                                                                                                                                                       0.1s
      => => transferring dockerfile: 278B                                                                                                                                                                       0.0s
@@ -243,18 +243,18 @@ Authored a Dockerfile utilizing a minimal `eclipse-temurin:17-jre-alpine` base i
      => [internal] load build context                                                                                                                                                                          0.6s
      => => transferring context: 27.27MB                                                                                                                                                                       0.6s
      => [2/4] WORKDIR /home/app                                                                                                                                                                                0.1s
-     => [3/4] COPY build/libs/docker-exercises-project-1.0-SNAPSHOT.jar app.jar                                                                                                                                0.1s
+     => [3/4] COPY build/libs/docker-PROJECTs-project-1.0-SNAPSHOT.jar app.jar                                                                                                                                0.1s
      => [4/4] RUN addgroup -S appgroup && adduser -S appuser -G appgroup                                                                                                                                       0.4s
      => exporting to image                                                                                                                                                                                     1.4s
      => => naming to docker.io/library/java-app:1.0                                                                                                                                                            0.0s
 ```
 
 #### Network Integration and Deployment
-Resolved connectivity limitations by dynamically injecting database credentials (`-e`) and attaching the container directly to the existing backend network (`--network docker-exercises_default`). The embedded Tomcat server successfully established a database connection and initialized on port 8080.
+Resolved connectivity limitations by dynamically injecting database credentials (`-e`) and attaching the container directly to the existing backend network (`--network docker-PROJECTs_default`). The embedded Tomcat server successfully established a database connection and initialized on port 8080.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker run \
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker run \
     > -p 8080:8080 \
-    > --network docker-exercises_default \
+    > --network docker-PROJECTs_default \
     > -e DB_USER=admin \
     > -e DB_PWD=pass \
     > -e DB_SERVER=mysql \
@@ -283,7 +283,7 @@ Resolved connectivity limitations by dynamically injecting database credentials 
 ******
 
 <details>
-<summary>EXERCISE 5: Private Docker Registry Integration and Image Publishing</summary>
+<summary>PROJECT 5: Private Docker Registry Integration and Image Publishing</summary>
 <br />
 
 #### Overview
@@ -335,7 +335,7 @@ Executed the push operation to transfer the tagged image layers from the local m
 ******
 
 <details>
-<summary>EXERCISE 6: Multi-Container Orchestration and Environment Management</summary>
+<summary>PROJECT 6: Multi-Container Orchestration and Environment Management</summary>
 <br />
 
 #### Project Overview
@@ -344,7 +344,7 @@ Orchestrated a secure, multi-container architecture consisting of a Java Spring 
 #### Configuration and Environment Management
 Authored a `java-app.yaml` Docker Compose manifest defining the service topology, explicit port bindings, and persistent data volumes. Replaced hardcoded credentials with dynamic environment variables (`${VAR}`), ensuring the deployment automatically injects parameters securely sourced from the local `.env` file. 
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# cat .env
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# cat .env
     DB_USER=admin
     DB_PWD=pass
     DB_SERVER=mysql
@@ -353,7 +353,7 @@ Authored a `java-app.yaml` Docker Compose manifest defining the service topology
     PMA_HOST=mysql
     PMA_PORT=3306
 
-    root@PC:/mnt/c/Users/emrea/docker-exercises# cat java-app.yaml
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# cat java-app.yaml
     version: '3.8'
     services:
       java-app:
@@ -404,10 +404,10 @@ Authored a `java-app.yaml` Docker Compose manifest defining the service topology
 #### Deployment and Health Check Synchronization
 Executed the orchestrated stack deployment. The integration of the `healthcheck` parameter effectively paused the `java-app` container deployment until the internal `mysqladmin ping` command validated the database's readiness. Log outputs confirm the successful establishment of the isolated bridge network, the "Healthy" status resolution of MySQL, and the subsequent synchronized initialization of the Tomcat server and phpMyAdmin client interfaces.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker-compose -f java-app.yaml up
-    WARN[0000] /mnt/c/Users/emrea/docker-exercises/java-app.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker-compose -f java-app.yaml up
+    WARN[0000] /mnt/c/Users/emrea/docker-PROJECTs/java-app.yaml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
     [+] up 4/4
-     ✔ Network docker-exercises_default Created                                                                                                                                                            0.1s
+     ✔ Network docker-PROJECTs_default Created                                                                                                                                                            0.1s
      ✔ Container mysql                  Created                                                                                                                                                            0.1s
      ✔ Container java-app-composed      Created                                                                                                                                                            0.1s
      ✔ Container phpmyadmin             Created                                                                                                                                                            0.2s
@@ -424,7 +424,7 @@ Executed the orchestrated stack deployment. The integration of the `healthcheck`
     java-app-composed  | 2026-04-03T18:40:16.913Z  INFO 1 --- [           main] com.example.Application                  : Started Application in 4.059 seconds (process running for 3.984)
     ...
     phpmyadmin         | 172.19.0.1 - - [03/Apr/2026:18:40:35 +0000] "GET / HTTP/1.1" 200 6060 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker ps
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker ps
     CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS                   PORTS                                         NAMES
     7b0e998ffdd3   phpmyadmin     "/docker-entrypoint.…"   4 minutes ago   Up 3 minutes             0.0.0.0:8088->80/tcp, [::]:8088->80/tcp       phpmyadmin
     5cac775ffba0   java-app:1.0   "/__cacert_entrypoin…"   4 minutes ago   Up 3 minutes             0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp   java-app-composed
@@ -437,25 +437,25 @@ Executed the orchestrated stack deployment. The integration of the `healthcheck`
 ******
 
 <details>
-<summary>EXERCISE 7: Remote Server Deployment & Environment Configuration</summary>
+<summary>PROJECT 7: Remote Server Deployment & Environment Configuration</summary>
 <br />
 
 
 #### Application Reconfiguration & Image Build
 Configured the frontend application to point to the remote server's external IP address instead of `localhost`. Recompiled the updated source code, built the new Docker image (`v1.1`), and authenticated with the private Nexus registry to push the artifact securely.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker build -t 167.172.185.199:8083/java-app:1.1 .
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker build -t 167.172.185.199:8083/java-app:1.1 .
     [+] Building 3.2s (9/9) FINISHED
     ...
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker login 167.172.185.199:8083
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker login 167.172.185.199:8083
     Login Succeeded
-    root@PC:/mnt/c/Users/emrea/docker-exercises# docker push 167.172.185.199:8083/java-app:1.1
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# docker push 167.172.185.199:8083/java-app:1.1
     1.1: digest: sha256:2b39a38154f0868680a22b971a005b2ba1b4aa8f6aa7d0aec2563a4c2d906a36 size: 856
 ```
 #### Server Provisioning & Security Configuration
 Transferred the necessary deployment manifests (`docker-compose.yaml` and `.env`) to the remote Ubuntu server utilizing secure copy protocol. Adjusted the Docker daemon configuration on the server to allow insecure HTTP connections to the private Nexus repository and restarted the Docker service to apply the registry bypass.
 ```bash
-    root@PC:/mnt/c/Users/emrea/docker-exercises# scp java-app.yaml .env root@167.172.185.199:/root/
+    root@PC:/mnt/c/Users/emrea/docker-PROJECTs# scp java-app.yaml .env root@167.172.185.199:/root/
     java-app.yaml                                                                 100% 1104    25.0KB/s   00:00
     .env                                                                          100%  112     2.7KB/s   00:00
     ...
