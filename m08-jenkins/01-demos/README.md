@@ -30,7 +30,7 @@ Designed a Jenkins automated job to fetch source code, compile the Java applicat
     echo $PASSWORD | docker login -u $USERNAME --password-stdin
     docker push emrearabacioglu/demo-app:jma-1.1
 ```
-```bash
+```
     [Jenkins Job Build Logs]
     [java-maven-build] $ /var/jenkins_home/tools/hudson.tasks.Maven_MavenInstallation/maven-3.9/bin/mvn package
     ...
@@ -85,7 +85,7 @@ Successfully executed a Jenkins build sequence to tag and push the compiled arti
     echo $PASSWORD | docker login -u $USERNAME --password-stdin 167.172.185.199:8083
     docker push 167.172.185.199:8083/java-maven-app:1.1
 ```
-```bash
+```
     [Jenkins Job Build Logs]
     + docker build -t 167.172.185.199:8083/java-maven-app:1.1 .
     ...
@@ -107,20 +107,101 @@ Successfully executed a Jenkins build sequence to tag and push the compiled arti
 ******
 
 <details>
-<summary>Freestyle to Pipeline Job</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
 <summary>Introduction to Pipeline Job</summary>
  <br />
  
- **content will be here**
+### Jenkins Declarative Pipeline Implementation
+
+#### Pipeline as Code Configuration
+Engineered a declarative `Jenkinsfile` and integrated it directly into the Git repository. The pipeline is designed with a basic three-tier architecture (Build, Test, Deploy) to demonstrate continuous integration stages as code. 
+```groovy
+    pipeline{
+        agent any
+        stages{
+            stage("build") {
+                steps {
+                    echo 'building the application...'
+                }
+            }
+            stage("test") {
+                steps {
+                    echo 'Testing the application...'
+                }
+            }
+            stage("Deploy") {
+                steps {
+                    echo 'Deploying the application...'
+                }
+            }
+        }
+    }
+```
+#### Pipeline Job Execution
+Configured a Pipeline Job in the Jenkins UI to pull the source code and pipeline definition from the remote GitHub repository. Jenkins successfully allocated an agent, checked out the target branch, and sequentially executed the defined stages, resulting in a successful build.
+```
+    Started by user emre
+    Obtained Jenkinsfile from git https://github.com/emrearabacioglu/java-maven-app.git
+    [Pipeline] Start of Pipeline
+    [Pipeline] node
+    Running on Jenkins in /var/jenkins_home/workspace/my-pipeline
+    [Pipeline] {
+    [Pipeline] stage
+    [Pipeline] { (Declarative: Checkout SCM)
+    [Pipeline] checkout
+    The recommended git tool is: git
+    using credential github-credentials
+    Cloning the remote Git repository
+    Cloning repository https://github.com/emrearabacioglu/java-maven-app.git
+     > git init /var/jenkins_home/workspace/my-pipeline # timeout=10
+    Fetching upstream changes from https://github.com/emrearabacioglu/java-maven-app.git
+     > git --version # timeout=10
+     > git --version # 'git version 2.47.3'
+    using GIT_ASKPASS to set credentials github-credentials
+     > git fetch --tags --force --progress -- https://github.com/emrearabacioglu/java-maven-app.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+     > git config remote.origin.url https://github.com/emrearabacioglu/java-maven-app.git # timeout=10
+     > git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/* # timeout=10
+    Avoid second fetch
+     > git rev-parse refs/remotes/origin/jenkins-jobs^{commit} # timeout=10
+    Checking out Revision 80b3d98f6d6378f14c67581b5f84384185b43576 (refs/remotes/origin/jenkins-jobs)
+     > git config core.sparsecheckout # timeout=10
+     > git checkout -f 80b3d98f6d6378f14c67581b5f84384185b43576 # timeout=10
+    Commit message: "Update Jenkinsfile"
+    First time build. Skipping changelog.
+    [Pipeline] }
+    [Pipeline] // stage
+    [Pipeline] withEnv
+    [Pipeline] {
+    [Pipeline] stage
+    [Pipeline] { (build)
+    [Pipeline] echo
+    building the application...
+    [Pipeline] }
+    [Pipeline] // stage
+    [Pipeline] stage
+    [Pipeline] { (test)
+    [Pipeline] echo
+    Testing the application...
+    [Pipeline] }
+    [Pipeline] // stage
+    [Pipeline] stage
+    [Pipeline] { (Deploy)
+    [Pipeline] echo
+    Deploying the application...
+    [Pipeline] }
+    [Pipeline] // stage
+    [Pipeline] }
+    [Pipeline] // withEnv
+    [Pipeline] }
+    [Pipeline] // node
+    [Pipeline] End of Pipeline
+    Finished: SUCCESS
+```
+#### Command Summary
+* `pipeline {}`: The mandatory root block that defines a Declarative Pipeline structure.
+* `agent any`: Instructs Jenkins to allocate any available executor/node to run the entire pipeline or a specific stage.
+* `stage('...') {}`: Defines a distinct, logical phase of the delivery process (e.g., Build, Test, Deploy).
+* `steps {}`: Contains the executable tasks and commands that actually perform the work within a stage.
+* `echo '...'`: Prints a string message to the Jenkins console output, primarily used for logging and debugging stage progress.
  
 </details>
 
