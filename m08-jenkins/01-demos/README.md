@@ -208,21 +208,137 @@ Configured a Pipeline Job in the Jenkins UI to pull the source code and pipeline
 ******
 
 <details>
-<summary>Jenkinsfile Syntax</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
 <summary>Create full Pipeline</summary>
  <br />
  
- **content will be here**
- 
+### End-to-End CI Pipeline Implementation with Externalized Groovy Scripting
+
+#### Pipeline Configuration Source Codes
+Orchestrated a declarative Jenkins pipeline utilizing Maven as the build tool. To ensure a scalable and maintainable CI/CD architecture, the core execution logic was decoupled from the main Jenkinsfile and abstracted into an external script.groovy module. 
+
+**Jenkinsfile:**
+```groovy
+    def gv 
+
+    pipeline{
+        agent any
+        tools{
+            maven 'maven-3.9'
+        }
+        stages{
+            stage("init"){
+                steps{
+                    script{
+                        gv = load "script.groovy"
+                    }
+                }
+            }
+            stage("build jar"){
+                steps{
+                    script{
+                        gv.buildJar()
+                    }
+                }
+            }
+            stage("build image"){
+                steps{
+                    script{
+                        gv.buildImage()
+                    }
+                }
+            }
+            stage("deploy"){
+                steps{
+                    script{
+                        gv.deployApp()
+                    }
+                }
+            }
+        }
+    }
+```
+**script.groovy:**
+```groovy
+    def buildJar(){
+        echo 'building the application..'
+        sh 'mvn package'
+    }
+
+    def buildImage(){
+        echo"building the docker image..."
+        withCredentials([usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable:'PASS', usernameVariable: 'USER')]){
+        sh 'docker build -t emrearabacioglu/demo-app:jma-2.0 .'
+        sh 'echo $PASS | docker login -u $USER --password-stdin'
+        sh 'docker push emrearabacioglu/demo-app:jma-2.0'
+        }
+    }
+
+    def deployApp(){
+        echo 'deployin the application...'
+    }
+
+    return this
+```
+#### Application Compilation and Packaging
+Executed the externalized buildJar function to trigger the Maven build lifecycle. The pipeline successfully compiled the Java source code, validated the build via automated unit tests, and generated a distributable JAR artifact within the pipeline workspace.
+```text
+    [Pipeline] { (build jar)
+    [Pipeline] tool
+    [Pipeline] envVarsForTool
+    [Pipeline] withEnv
+    [Pipeline] {
+    [Pipeline] script
+    [Pipeline] {
+    [Pipeline] echo
+    building the application..
+    [Pipeline] sh
+    + mvn package
+    [INFO] Scanning for projects...
+    [INFO] ---------------------< com.example:java-maven-app >---------------------
+    [INFO] Building java-maven-app 1.1.8
+    ...
+    [INFO] --- surefire:3.5.4:test (default-test) @ java-maven-app ---
+    [INFO] Running AppTest
+    [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.117 s -- in AppTest
+    ...
+    [INFO] Building jar: /var/jenkins_home/workspace/my-pipeline/target/java-maven-app-1.1.8.jar
+    [INFO] ------------------------------------------------------------------------
+    [INFO] BUILD SUCCESS
+    [INFO] Total time:  5.216 s
+    [INFO] Finished at: 2026-04-06T16:12:02Z
+```
+#### Secure Containerization and DockerHub Publishing
+Engineered the buildImage stage to autonomously construct a Docker image encapsulating the newly compiled JAR. Leveraged Jenkins withCredentials to securely inject DockerHub credentials, ensuring sensitive data (passwords/tokens) remained completely masked in the console outputs. The tagged artifact (jma-2.0) was successfully pushed to the private DockerHub repository.
+```text
+    [Pipeline] { (build image)
+    ...
+    [Pipeline] echo
+    building the docker image...
+    [Pipeline] withCredentials
+    Masking supported pattern matches of $PASS
+    [Pipeline] {
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:jma-2.0 .
+    ...
+    #9 writing image sha256:8f23d27432b0b31924fb939992d46b840db46de0ef4858009c6bb0993716cb37 done
+    #9 naming to docker.io/emrearabacioglu/demo-app:jma-2.0 done
+    ...
+    [Pipeline] sh
+    + echo ****
+    + docker login -u emrearabacioglu --password-stdin
+    Login Succeeded
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:jma-2.0
+    The push refers to repository [docker.io/emrearabacioglu/demo-app]
+    ...
+    d6c3c2dd4b22: Pushed
+    jma-2.0: digest: sha256:fa5646f916af1851effcbdd4ea210fe8acdf62af2ebd93847c27ec85ca59ebbe size: 1159
+```
+<img width="2980" height="921" alt="image" src="https://github.com/user-attachments/assets/bda71adb-0452-4d14-bd91-cb8a8e05a44a" />
+
+<img width="1891" height="617" alt="image" src="https://github.com/user-attachments/assets/df311cc4-4ccf-438f-8aac-2d5f426312fc" />
+
+
 </details>
 
 ******
