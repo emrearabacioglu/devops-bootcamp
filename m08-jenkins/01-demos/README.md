@@ -343,41 +343,189 @@ Engineered the buildImage stage to autonomously construct a Docker image encapsu
 
 ******
 
-<details>
-<summary>Introduction to Multibranch Job</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-<summary>Wrap Up Jenkins Job</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-<summary>Credentials in Jenkins</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
 
 <details>
 <summary>Jenkins Shared Library</summary>
  <br />
  
- **content will be here**
+### Extending CI/CD Pipelines with Jenkins Shared Libraries
+
+#### Configuration & Script Ecosystem
+Abstracted pipeline execution logic into globally accessible Groovy classes and scripts by implementing a Jenkins Shared Library. This modular approach enabled logic reuse, parameterization, and direct library resolution within the pipeline scope.
+
+Jenkinsfile:
+
+    #!/user/bin/env groovy
+    library identifier: 'jenkins-shared-library@master', retriever: modernSCM(
+        [$class: 'GitSCMSource',
+        remote: 'https://github.com/emrearabacioglu/jenkins-shared-library.git', 
+        credentialsId: 'github-credentials'])
+
+    def gv 
+
+    pipeline{
+        agent any
+        tools{
+            maven 'maven-3.9'
+        }
+        stages{
+            stage("init"){
+                steps{
+                    script{
+                        gv = load "script.groovy"
+                    }
+                }
+            }
+            stage("build jar"){
+                steps{
+                    script{
+                        buildJar()
+                    }
+                }
+            }
+            stage("build and push image"){
+                steps{
+                    script{
+                        buildImage 'emrearabacioglu/demo-app:jma-3.0'
+                        dockerLogin()
+                        dockerPush 'emrearabacioglu/demo-app:jma-3.0'
+                        
+                    }
+                }
+            }
+            stage("deploy"){
+                steps{
+                    script{
+                        gv.deployApp()
+                    }
+                }
+            }
+        }
+    }
+
+script.groovy:
+
+    def deployApp() {
+        echo 'deploying the application...'
+    }
+    return this
+
+docker.groovy (Class implementation):
+
+    #!/user/bin/env groovy
+    package com.example
+
+    class Docker implements Serializable {
+        def script
+
+        Docker(script) {
+            this.script = script
+        }
+
+        def buildDockerImage(String imageName){
+            script.echo"building the docker image..."
+            script.sh "docker build -t $imageName ."
+        }
+
+        def dockerLogin() {
+            script.echo"Logging into Docker Repository..."
+            script.withCredentials([script.usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable:'PASS', usernameVariable: 'USER')]){
+                script.sh "echo '${script.PASS}' | docker login -u '${script.USER}' --password-stdin"
+            }
+        }
+
+        def dockerPush(String imageName) {
+            script.echo"pushing the docker image..."
+            script.sh "docker push $imageName"
+        }
+    }
+
+buildImage.groovy:
+
+    #!/user/bin/env groovy
+    import com.example.Docker
+
+    def call(String imageName) {
+        return new Docker(this).buildDockerImage(imageName)
+    }
+
+buildJar.groovy:
+
+    #!/user/bin/env groovy
+    def call() {
+        echo "building the application.. for branch $GIT_BRANCH"
+        sh 'mvn package'
+    }
+
+dockerLogin.groovy:
+
+    #!/user/bin/env groovy
+    import com.example.Docker
+
+    def call() {
+        return new Docker(this).dockerLogin()
+    }
+
+dockerPush.groovy:
+
+    #!/user/bin/env groovy
+    import com.example.Docker
+
+    def call(String imageName) {
+        return new Docker(this).dockerPush(imageName)
+    }
+
+#### Shared Library Integration & Initialization
+Demonstrated dynamic project-scoped loading of the Shared Library from a remote Git repository directly inside the `Jenkinsfile` using the `library` identifier block.
+
+    [Pipeline] Start of Pipeline
+    [Pipeline] library
+    Loading library jenkins-shared-library@master
+    Attempting to resolve master from remote references...
+     > git fetch --no-tags --force --progress -- https://github.com/emrearabacioglu/jenkins-shared-library.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+    Checking out Revision 5d73a3e1ca7d6e3a1f0246abb0c83e847e08ac1d (master)
+    Commit message: "Update Docker.groovy"
+
+#### Application Compilation via Shared Library
+Successfully utilized the custom `buildJar()` step injected by the Shared Library. The pipeline dynamically captured the Git branch environment variable and executed the Maven build phase.
+
+    [Pipeline] echo
+    building the application.. for branch jenkins-shared-lib
+    [Pipeline] sh
+    + mvn package
+    [INFO] Scanning for projects...
+    [INFO] Building java-maven-app 1.1.0-SNAPSHOT
+    ...
+    [INFO] Replacing main artifact /var/jenkins_home/workspace/ice-user-auth_jenkins-shared-lib/target/java-maven-app-1.1.0-SNAPSHOT.jar
+    [INFO] BUILD SUCCESS
+    [INFO] Total time:  2.719 s
+    [INFO] Finished at: 2026-04-07T09:33:54Z
+
+#### Containerization & DockerHub Publishing via Groovy Classes
+Executed complex logic through the instantiated `com.example.Docker` Groovy class. Passed parameters from the `Jenkinsfile` directly to the class methods (`buildDockerImage`, `dockerLogin`, `dockerPush`) to build and securely publish the tagged artifact (`jma-3.0`).
+
+    [Pipeline] echo
+    building the docker image...
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:jma-3.0 .
+    ...
+    #9 writing image sha256:1ea4dc8739a586e103b99d529dd9447cc7ec6436428777b3ecbc104dce5fe57e done
+    #9 naming to docker.io/emrearabacioglu/demo-app:jma-3.0 done
+    ...
+    [Pipeline] echo
+    Logging into Docker Repository...
+    ...
+    + docker login -u emrearabacioglu --password-stdin
+    Login Succeeded
+    ...
+    [Pipeline] echo
+    pushing the docker image...
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:jma-3.0
+    The push refers to repository [docker.io/emrearabacioglu/demo-app]
+    jma-3.0: digest: sha256:3c815248c19e549f5f3a04844d7bb86614a8de79d2965be158e84003c6aa6c17 size: 1159
+    Finished: SUCCESS
+
  
 </details>
 
