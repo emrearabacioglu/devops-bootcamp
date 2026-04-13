@@ -545,8 +545,142 @@ Executed complex logic through the instantiated `com.example.Docker` Groovy clas
 <summary>Versioning your application - Part 1</summary>
  <br />
  
- **content will be here**
- 
+### Versioning Your Application - Part I
+
+#### Configuration Source Files
+Engineered a declarative Jenkins pipeline designed to autonomously parse and increment the application's semantic version utilizing the Maven Build Helper plugin. Configured dynamic image tagging based on the newly incremented version and the Jenkins build number, ensuring immutable and traceable artifact generation. Formulated a lightweight Dockerfile to containerize the resulting Java application.
+
+Jenkinsfile:
+```
+    pipeline{
+        agent any
+        tools{
+            maven 'maven-3.9'
+        }
+        stages{
+            stage("increment version") {
+                steps{
+                    script{
+                        echo 'incrementing the app version...'
+                        sh 'mvn build-helper:parse-version versions:set -DnewVersion=\\${parsedVersion.majorVersion}.\\${parsedVersion.minorVersion}.\\${parsedVersion.nextIncrementalVersion} versions:commit'
+                        
+                        def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                        def version = matcher[0][1]
+                        env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                    }
+                }
+            }
+            stage("build app") {
+                steps {
+                    script{
+                        echo "building the app..."
+                        sh 'mvn clean package'
+                    }
+                }
+            }
+            stage("build image") {
+                steps {
+                    script{
+                        echo "Building the docker image..."
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                            sh "docker build -t emrearabacioglu/demo-app:$IMAGE_NAME ."
+                            sh 'echo $PASS | docker login -u $USER --password-stdin'
+                            sh "docker push emrearabacioglu/demo-app:$IMAGE_NAME"
+                        }
+                    }
+                }
+            }
+            stage("deploy") {
+                steps {
+                    script{
+                        echo "deploying the app..."
+                    }
+                }
+            }
+        }
+    }
+```
+Dockerfile:
+```
+
+    FROM amazoncorretto:17-alpine-jdk
+
+    EXPOSE 8080
+
+    COPY ./target/java-maven-app-*.jar /usr/app/
+    WORKDIR /usr/app
+
+    CMD java -jar java-maven-app-*.jar
+```
+
+#### Automated Version Increment and Application Compilation
+Executed the pipeline to dynamically bump the patch version of the Maven project. The execution successfully parsed the existing `1.1.0-SNAPSHOT` version, incremented the incremental value, and committed `1.1.1` directly to the `pom.xml`. Following the version update, a clean Maven package operation was executed to compile the updated artifact.
+
+```
+
+    Started by user emre
+    ...
+    [Pipeline] { (increment version)
+    ...
+    [Pipeline] echo
+    incrementing the app version...
+    [Pipeline] sh
+    + mvn build-helper:parse-version versions:set -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} versions:commit
+    [INFO] Scanning for projects...
+    ...
+    [INFO] Processing change of com.example:java-maven-app:1.1.0-SNAPSHOT -> 1.1.1
+    [INFO] Processing com.example:java-maven-app
+    [INFO]     Updating project com.example:java-maven-app
+    [INFO]         from version 1.1.0-SNAPSHOT to 1.1.1
+    ...
+    [INFO] Accepting all changes to /var/jenkins_home/workspace/microsservice-payment_increment/pom.xml
+    [INFO] BUILD SUCCESS
+    [INFO] Finished at: 2026-04-13T19:15:26Z
+    ...
+    [Pipeline] { (build app)
+    ...
+    [Pipeline] echo
+    building the app...
+    [Pipeline] sh
+    + mvn clean package
+    ...
+    [INFO] Building jar: /var/jenkins_home/workspace/microsservice-payment_increment/target/java-maven-app-1.1.1.jar
+    [INFO] Replacing main artifact /var/jenkins_home/workspace/microsservice-payment_increment/target/java-maven-app-1.1.1.jar with repackaged archive
+    [INFO] BUILD SUCCESS
+    [INFO] Finished at: 2026-04-13T19:15:33Z
+```
+
+#### Dynamic Containerization and Secure Registry Deployment
+Demonstrated the encapsulation of the compiled JAR artifact into a Docker container. The pipeline dynamically interpolated the extracted Maven version and Jenkins build number to tag the image (`1.1.1-10`). Authenticated securely via `withCredentials` and published the artifact to the remote Docker Hub repository.
+```
+
+    [Pipeline] { (build image)
+    ...
+    [Pipeline] echo
+    Building the docker image...
+    [Pipeline] withCredentials
+    Masking supported pattern matches of $PASS
+    [Pipeline] {
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:1.1.1-10 .
+    ...
+    #9 writing image sha256:db5a75400aa2ea7cfbd6bc9491d60e4a008d81aaa2721fa12f259d7f842a4d2a done
+    #9 naming to docker.io/emrearabacioglu/demo-app:1.1.1-10 done
+    ...
+    [Pipeline] sh
+    + + docker login -u emrearabacioglu --password-stdin
+    echo ****
+    Login Succeeded
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:1.1.1-10
+    The push refers to repository [docker.io/emrearabacioglu/demo-app]
+    ...
+    2b50054e1f59: Pushed
+    1.1.1-10: digest: sha256:fb28bbdbae0c6fa0f6a9b0fa15d035290884cf3377540537a4bcf5dfbb69dcfb size: 1159
+    ...
+    Finished: SUCCESS
+```
+
 </details>
 
 ******
