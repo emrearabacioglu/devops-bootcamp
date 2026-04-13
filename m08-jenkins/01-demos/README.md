@@ -542,7 +542,7 @@ Executed complex logic through the instantiated `com.example.Docker` Groovy clas
 ******
 
 <details>
-<summary>Versioning your application - Part 1</summary>
+<summary>Versioning your application</summary>
  <br />
 
 #### Configuration Source Files
