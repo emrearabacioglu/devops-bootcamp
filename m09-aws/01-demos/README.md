@@ -79,7 +79,100 @@ Authenticated with the private DockerHub registry, pulled the previously built c
 <summary>Deploy to EC2 server from Jenkins Pipeline - CI/CD Part 1</summary>
  <br />
  
- **content will be here**
+### Demo 1: Deployed WebApp Container via Jenkins Pipeline on EC2 Instance
+
+#### Overview
+* Configured a Jenkins `Multi-Branch Pipeline` to automate application deployment.
+* Integrated `sshagent` plugin in Jenkins to securely access the AWS EC2 instance.
+* Executed remote Docker commands on the EC2 instance via SSH to pull and run the application container.
+* Successfully deployed the `emrearabacioglu/demo-app:1.1.1-10` image and exposed it on port `3080`.
+
+#### Execution Logs
+
+    [Pipeline] sshagent
+    [ssh-agent] Using credentials ec2-user
+    [ssh-agent] Started.
+    [Pipeline] {
+    [Pipeline] sh
+    + ssh -o StrictHostKeyChecking=no ec2-user@3.125.50.166 docker run -p 3080:8080 -d emrearabacioglu/demo-app:1.1.1-10
+    Unable to find image 'emrearabacioglu/demo-app:1.1.1-10' locally
+    Status: Downloaded newer image for emrearabacioglu/demo-app:1.1.1-10
+    28479044591ba2e368bb6a1a449b2d937f212a7d058601efe047d5519c58bbef
+    [Pipeline] }
+    ...
+    Finished: SUCCESS
+
+    [ec2-user@ip-172-31-21-191 ~]$ docker ps
+    CONTAINER ID   IMAGE                               COMMAND                  CREATED          STATUS          PORTS                                       NAMES
+    28479044591b   emrearabacioglu/demo-app:1.1.1-10   "/bin/sh -c 'java -j…"   38 seconds ago   Up 37 seconds   0.0.0.0:3080->8080/tcp, :::3080->8080/tcp   sweet_feynman
+
+---
+
+### Demo 2: Deployed Java Maven App via Jenkins Shared Library
+
+#### Overview
+* Implemented a `Jenkins Shared Library` (`jenkins-shared-library@master`) to modularize pipeline functions (buildJar, buildImage, dockerLogin, dockerPush).
+* Compiled and packaged the Java application locally on the Jenkins server using Maven (`mvn package`).
+* Built a new Docker image (`jma-3.0`) and successfully pushed it to DockerHub.
+* Deployed the freshly built artifact to the EC2 instance, exposing the service on port `8080`.
+
+#### Execution Logs
+
+    [Pipeline] echo
+    building application jar...
+    [Pipeline] sh
+    + mvn package
+    ...
+    [INFO] Building jar: /var/jenkins_home/workspace/ultibranch-pipeline_jenkins-jobs/target/java-maven-app-1.1.8.jar
+    [INFO] BUILD SUCCESS
+    ...
+    [Pipeline] echo
+    building the docker image...
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:jma-3.0 .
+    ...
+    [Pipeline] echo
+    pushing the docker image...
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:jma-3.0
+    ...
+    jma-3.0: digest: sha256:4b8fad7e4f861372149685a8b1a2fd18e5496c5e5657dcc8fc4d61250b5af05b size: 1159
+    ...
+    [Pipeline] echo
+    deploying docker image to EC2...
+    [Pipeline] sh
+    + ssh -o StrictHostKeyChecking=no ec2-user@3.125.50.166 docker run -p 8080:8080 -d emrearabacioglu/demo-app:jma-3.0
+    Status: Downloaded newer image for emrearabacioglu/demo-app:jma-3.0
+    27b02fffdd94d506571f4c9185c2faa46b7f790c668153bb04b74a714196eaeb
+    ...
+    Finished: SUCCESS
+
+    [ec2-user@ip-172-31-21-191 ~]$ docker ps
+    CONTAINER ID   IMAGE                              COMMAND                  CREATED         STATUS          PORTS                                       NAMES
+    27b02fffdd94   emrearabacioglu/demo-app:jma-3.0    "/bin/sh -c 'java -j…"   7 minutes ago   Up 40 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   friendly_hamilton
+    28479044591b   emrearabacioglu/demo-app:1.1.1-10   "/bin/sh -c 'java -j…"   6 hours ago     Up 6 hours      0.0.0.0:3080->8080/tcp, :::3080->8080/tcp   sweet_feynman
+
+---
+
+### Command Summary
+
+* `mvn package`: Compiles the source code, runs tests, and packages the compiled code into a distributable format (JAR).
+* `docker build -t`: Builds a Docker image from a Dockerfile and assigns a tag (name/version) to it.
+* `docker login`: Authenticates the local Docker client with a remote registry (DockerHub).
+* `docker push`: Uploads a local Docker image to a remote registry.
+* `ssh -o StrictHostKeyChecking=no`: Connects to a remote server while bypassing the interactive host key confirmation prompt (crucial for CI/CD automation).
+* `docker run -p -d`: Runs a container in the background (detached mode) and maps a host port to a container port.
+* `docker ps`: Lists all actively running Docker containers and their mapped ports.
+
+---
+
+### Visual Documentation Recommendations
+
+To provide a complete overview of the workflow, consider adding the following screenshots to the repository:
+1.  **AWS Security Groups:** A screenshot of the EC2 Inbound Rules showing ports `3080` and `8080` successfully opened to `0.0.0.0/0`.
+2.  **Jenkins Credentials:** A snapshot of the Jenkins Global Credentials dashboard proving the EC2 SSH Key configuration.
+3.  **Jenkins Pipeline UI:** The graphical view of the Jenkins Multi-Branch Pipeline stages (Test, Build App, Build Image, Deploy) turning green.
+4.  **Application UI:** Browser screenshots demonstrating the active web application running live on `http://<EC2-IP>:3080` and `http://<EC2-IP>:8080`.
  
 </details>
 
