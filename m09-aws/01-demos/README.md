@@ -106,6 +106,8 @@ Authenticated with the private DockerHub registry, pulled the previously built c
     CONTAINER ID   IMAGE                               COMMAND                  CREATED          STATUS          PORTS                                       NAMES
     28479044591b   emrearabacioglu/demo-app:1.1.1-10   "/bin/sh -c 'java -j…"   38 seconds ago   Up 37 seconds   0.0.0.0:3080->8080/tcp, :::3080->8080/tcp   sweet_feynman
 
+<img width="788" height="207" alt="image" src="https://github.com/user-attachments/assets/78dc0ff3-a153-443a-b78c-eca206dc4dcb" />
+
 ---
 
 ### Demo 2: Deployed Java Maven App via Jenkins Shared Library
@@ -152,28 +154,10 @@ Authenticated with the private DockerHub registry, pulled the previously built c
     27b02fffdd94   emrearabacioglu/demo-app:jma-3.0    "/bin/sh -c 'java -j…"   7 minutes ago   Up 40 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   friendly_hamilton
     28479044591b   emrearabacioglu/demo-app:1.1.1-10   "/bin/sh -c 'java -j…"   6 hours ago     Up 6 hours      0.0.0.0:3080->8080/tcp, :::3080->8080/tcp   sweet_feynman
 
----
-
-### Command Summary
-
-* `mvn package`: Compiles the source code, runs tests, and packages the compiled code into a distributable format (JAR).
-* `docker build -t`: Builds a Docker image from a Dockerfile and assigns a tag (name/version) to it.
-* `docker login`: Authenticates the local Docker client with a remote registry (DockerHub).
-* `docker push`: Uploads a local Docker image to a remote registry.
-* `ssh -o StrictHostKeyChecking=no`: Connects to a remote server while bypassing the interactive host key confirmation prompt (crucial for CI/CD automation).
-* `docker run -p -d`: Runs a container in the background (detached mode) and maps a host port to a container port.
-* `docker ps`: Lists all actively running Docker containers and their mapped ports.
+<img width="883" height="212" alt="image" src="https://github.com/user-attachments/assets/804510fb-86b4-4c6a-b293-a8791a4452b7" />
 
 ---
 
-### Visual Documentation Recommendations
-
-To provide a complete overview of the workflow, consider adding the following screenshots to the repository:
-1.  **AWS Security Groups:** A screenshot of the EC2 Inbound Rules showing ports `3080` and `8080` successfully opened to `0.0.0.0/0`.
-2.  **Jenkins Credentials:** A snapshot of the Jenkins Global Credentials dashboard proving the EC2 SSH Key configuration.
-3.  **Jenkins Pipeline UI:** The graphical view of the Jenkins Multi-Branch Pipeline stages (Test, Build App, Build Image, Deploy) turning green.
-4.  **Application UI:** Browser screenshots demonstrating the active web application running live on `http://<EC2-IP>:3080` and `http://<EC2-IP>:8080`.
- 
 </details>
 
 ******
