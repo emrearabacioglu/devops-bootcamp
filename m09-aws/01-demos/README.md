@@ -166,7 +166,149 @@ Authenticated with the private DockerHub registry, pulled the previously built c
 <summary>Deploy to EC2 server from Jenkins Pipeline - CI/CD Part 2</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: Deploy Java Maven App via Jenkins Pipeline on EC2 Instance using Docker Compose
+
+#### Overview
+Engineered and executed a continuous deployment pipeline to build, containerize, and orchestrate a multi-service architecture on an AWS EC2 instance. Abstracted the deployment logic into a remote shell script (`server-cmds.sh`) and utilized Docker Compose to synchronously provision the Java application and its associated PostgreSQL database.
+
+Jenkinsfile:
+
+```groovy
+#!/usr/bin/env groovy
+
+library identifier: 'jenkins-shared-library@master', retriever: modernSCM(
+    [$class: 'GitSCMSource',
+    remote: 'https://github.com/emrearabacioglu/jenkins-shared-library.git',
+    credentialsID: 'github-credentials'
+    ]
+)
+
+pipeline {
+    agent any
+    tools {
+        maven 'maven-3.9'
+    }
+    environment {
+        IMAGE_NAME = 'emrearabacioglu/demo-app:jma-3.0'
+    }
+    stages {
+        stage('build app') {
+            steps {
+                echo 'building application jar...'
+                buildJar()
+            }
+        }
+        stage('build image') {
+            steps {
+                script {
+                    echo 'building the docker image...'
+                    buildImage(env.IMAGE_NAME)
+                    dockerLogin()
+                    dockerPush(env.IMAGE_NAME)
+                }
+            }
+        } 
+        stage("deploy") {
+            steps {
+                script {
+                    echo 'deploying docker image to EC2...'
+                    def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                    def ec2Instance = "ec2-user@3.125.50.166"
+                    sshagent(['ec2-server-key']) {
+                        sh "scp server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                        sh "scp docker-compose.yaml ${ec2Instance}:/home/ec2-user"
+                        sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
+                    }
+                }
+            }               
+        }
+    }
+}
+
+
+```
+docker-compose file: 
+
+```yaml
+version: '3.8'
+services:
+  java-maven-app:
+    image: ${IMAGE}
+    ports:
+      - 8080:8080
+
+  postgres:
+    image: postgres:15
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=my-pwd
+```
+
+bash script: 
+
+```bash
+#!/usr/bin/env groovy
+
+export IMAGE=$1
+
+docker-compose -f docker-compose.yaml up --detach
+
+echo "success"
+```
+
+#### Execution Logs & Artifacts
+
+Compiled and packaged the application artifact locally on the Jenkins agent:
+
+    [Pipeline] sh
+    + mvn package
+    [INFO] Scanning for projects...
+    ...
+    [INFO] Building jar: /var/jenkins_home/workspace/ultibranch-pipeline_jenkins-jobs/target/java-maven-app-1.1.8.jar
+    [INFO] BUILD SUCCESS
+    [INFO] Total time:  5.723 s
+
+Built and pushed the application Docker image to the remote registry:
+
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:jma-3.0 .
+    ...
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:jma-3.0
+    ...
+    jma-3.0: digest: sha256:92fb82f7fbe3673c80b8b5bb6a870e266f11e7919d4bf2618ed760e4f1d2ff59 size: 1159
+
+Securely transferred configuration files to the target EC2 environment and triggered the remote deployment script:
+
+    [Pipeline] sh
+    + scp server-cmds.sh ec2-user@3.125.50.166:/home/ec2-user
+    [Pipeline] sh
+    + scp docker-compose.yaml ec2-user@3.125.50.166:/home/ec2-user
+    [Pipeline] sh
+    + ssh -o StrictHostKeyChecking=no ec2-user@3.125.50.166 bash ./server-cmds.sh emrearabacioglu/demo-app:jma-3.0
+
+Orchestrated the multi-container environment (Java App + Postgres) via Docker Compose:
+     Network ec2-user_default Creating 
+     Network ec2-user_default Created 
+     Container ec2-user-postgres-1 Creating 
+     Container ec2-user-java-maven-app-1 Creating 
+     Container ec2-user-java-maven-app-1 Created 
+     Container ec2-user-postgres-1 Created 
+     Container ec2-user-java-maven-app-1 Starting 
+     Container ec2-user-postgres-1 Starting 
+     Container ec2-user-java-maven-app-1 Started 
+     Container ec2-user-postgres-1 Started 
+    success
+<img width="899" height="220" alt="image" src="https://github.com/user-attachments/assets/79e4c947-ec71-4918-a989-739a326fd7eb" />
+
+```bash
+[ec2-user@ip-172-31-21-191 ~]$ docker ps
+CONTAINER ID   IMAGE                              COMMAND                  CREATED          STATUS          PORTS                                       NAMES
+b40cea0f15dd   emrearabacioglu/demo-app:jma-3.0   "/bin/sh -c 'java -j…"   20 seconds ago   Up 18 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   ec2-user-java-maven-app-1
+020d64f33101   postgres:15                        "docker-entrypoint.s…"   20 seconds ago   Up 18 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   ec2-user-postgres-1
+```
+
  
 </details>
 
