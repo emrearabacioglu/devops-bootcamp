@@ -318,7 +318,146 @@ b40cea0f15dd   emrearabacioglu/demo-app:jma-3.0   "/bin/sh -c 'java -j…"   20 
 <summary>Deploy to EC2 server from Jenkins Pipeline - CI/CD Part 3</summary>
  <br />
  
- **content will be here**
+### Demo Executed: Automated Dynamic Versioning & Multi-Container Deployment to AWS EC2
+
+#### Overview
+Engineered an end-to-end CI/CD pipeline featuring automated dynamic versioning. Configured the Jenkinsfile to utilize Maven plugins to increment the application patch version automatically during the build process. The pipeline seamlessly builds the newly versioned artifact, constructs and pushes the Docker image to the registry, and orchestrates a multi-container deployment (Java App + PostgreSQL) on an AWS EC2 instance using Docker Compose. Finally, the pipeline commits the version bump back to the source code repository to maintain state consistency.
+
+#### Execution Logs & Artifacts
+
+Jenkinsfile: 
+```groovy
+#!/usr/bin/env groovy
+
+library identifier: 'jenkins-shared-library@master', retriever: modernSCM(
+    [$class: 'GitSCMSource',
+    remote: 'https://github.com/emrearabacioglu/jenkins-shared-library.git',
+    credentialsID: 'github-credentials'
+    ]
+)
+
+pipeline {
+    agent any
+    tools {
+        maven 'maven-3.9'
+    }
+    stages {
+        stage('increment version'){
+            steps {
+                script {
+                    echo 'incrementing the version..'
+                    sh 'mvn build-helper:parse-version versions:set \
+                        -DnewVersion=\\\${parsedVersion.majorVersion}.\\\${parsedVersion.minorVersion}.\\\${parsedVersion.nextIncrementalVersion} \
+                        versions:commit'
+                    def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                    def version = matcher[0][1]
+                    env.IMAGE_NAME = "emrearabacioglu/demo-app:${version}-${BUILD_NUMBER}"
+                }
+            }
+        }
+        stage('build app') {
+            steps {
+                echo 'building application jar...'
+                buildJar()
+            }
+        }
+        stage('build image') {
+            steps {
+                script {
+                    echo 'building the docker image...'
+                    buildImage(env.IMAGE_NAME)
+                    dockerLogin()
+                    dockerPush(env.IMAGE_NAME)
+                }
+            }
+        } 
+        stage("deploy") {
+            steps {
+                script {
+                    echo 'deploying docker image to EC2...'
+
+                    def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                    def ec2Instance = "ec2-user@3.125.50.166"
+
+                    sshagent(['ec2-server-key']) {
+                        sh "scp server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                        sh "scp docker-compose.yaml ${ec2Instance}:/home/ec2-user"
+                        sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
+                    }
+                }
+            }               
+        }
+        stage('commit version update') {
+            steps{
+                script{
+                    withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                        sh "git remote set-url origin https://${USER}:${PASS}@github.com/emrearabacioglu/java-maven-app.git"
+                        sh 'git add .'
+                        sh 'git commit -m "version bump"'
+                        sh 'git push origin HEAD:jenkins-jobs'
+                    }
+                }
+            }
+        }
+    }
+}
+
+```
+
+Dynamically incremented the application version via Maven Build Helper:
+
+    [Pipeline] sh
+    + mvn build-helper:parse-version versions:set -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} versions:commit
+    ...
+    [INFO] Processing change of com.example:java-maven-app:1.1.8 -> 1.1.9
+    [INFO]     Updating project com.example:java-maven-app
+    [INFO]         from version 1.1.8 to 1.1.9
+
+Built and pushed the dynamically tagged Docker image:
+
+    [Pipeline] sh
+    + docker build -t emrearabacioglu/demo-app:1.1.9-12 .
+    ...
+    [Pipeline] sh
+    + docker push emrearabacioglu/demo-app:1.1.9-12
+    ...
+    1.1.9-12: digest: sha256:915a34770f02767d81762efd3bd92538db2e68abceffcd27210db69475995817 size: 1159
+
+Executed remote deployment utilizing Docker Compose on the EC2 host:
+
+    [Pipeline] sh
+    + ssh -o StrictHostKeyChecking=no ec2-user@3.125.50.166 bash ./server-cmds.sh emrearabacioglu/demo-app:1.1.9-12
+    ...
+     Image emrearabacioglu/demo-app:1.1.9-12 Pulled 
+     Container ec2-user-java-maven-app-1 Recreate 
+     Container ec2-user-java-maven-app-1 Recreated 
+     Container ec2-user-java-maven-app-1 Starting 
+     Container ec2-user-postgres-1 Starting 
+     Container ec2-user-postgres-1 Started 
+     Container ec2-user-java-maven-app-1 Started 
+    success
+
+Committed and pushed the updated `pom.xml` back to the GitHub repository:
+
+    [Pipeline] sh
+    + git commit -m version bump
+    [detached HEAD 034949a] version bump
+     8 files changed, 25 insertions(+), 28 deletions(-)
+    [Pipeline] sh
+    + git push origin HEAD:jenkins-jobs
+    To https://github.com/emrearabacioglu/java-maven-app.git
+       f1fe8e6..034949a  HEAD -> jenkins-jobs
+
+<img width="1184" height="265" alt="image" src="https://github.com/user-attachments/assets/0b5cf21a-dc6c-42e1-bf26-a424006f8c97" />
+
+Verified active containers on the EC2 server:
+```bash
+    [ec2-user@ip-172-31-21-191 ~]$ docker ps
+    CONTAINER ID   IMAGE                               COMMAND                  CREATED          STATUS          PORTS                                       NAMES
+    42d798c26a0e   emrearabacioglu/demo-app:1.1.9-12   "/bin/sh -c 'java -j…"   36 seconds ago   Up 34 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   ec2-user-java-maven-app-1
+    020d64f33101   postgres:15                         "docker-entrypoint.s…"   24 hours ago     Up 34 seconds   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   ec2-user-postgres-1
+```
+
  
 </details>
 
