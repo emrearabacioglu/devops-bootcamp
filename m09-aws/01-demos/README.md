@@ -467,7 +467,55 @@ Verified active containers on the EC2 server:
 <summary>ECR - Elastic Container Registry</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: AWS ECR Private Registry Integration & Docker Image Deployment
+
+#### Overview
+Demonstrated the end-to-end workflow of securely publishing local Docker containers to a private Amazon Elastic Container Registry (ECR). The process entailed provisioning the local AWS CLI environment, establishing an authenticated session between the local Docker client and AWS via IAM credentials, building multiple iterations (`1.0` and `1.1`) of a Node.js application image, and successfully pushing the tagged artifacts to the remote AWS repository.
+
+#### Execution Logs & Artifacts
+
+Configured the AWS CLI environment and successfully authenticated the Docker client with the private ECR registry:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws configure
+    AWS Access Key ID [****************6472]: ******
+    AWS Secret Access Key [****************VPGR]: ******
+    Default region name [eu-central-1]: eu-central-1
+    Default output format [json]: json
+    
+    root@PC:/mnt/c/Users/emrea# aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 731872836472.dkr.ecr.eu-central-1.amazonaws.com
+    Login Succeeded
+```
+Built the initial Node.js application image (`1.0`), applied the target ECR repository tag, and pushed the artifact:
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app# docker build -t my-app:1.0 .
+    [+] Building 1.3s (11/11) FINISHED
+    ...
+    root@PC:/mnt/c/Users/emrea# docker tag my-app:1.0 731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0
+    
+    root@PC:/mnt/c/Users/emrea# docker push 731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0
+    The push refers to repository [731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app]
+    9cc1f72199aa: Pushed
+    ...
+    1.0: digest: sha256:6864de50df6c69649d7fad5dbeab0c774ba73873004dfd7d925a9bd831892474 size: 856
+```
+Compiled a subsequent version (`1.1`), updated the corresponding ECR tag, and pushed the new iteration:
+```bash
+    root@PC:/mnt/c/Users/emrea/js-app# docker build -t my-app:1.1 .
+    [+] Building 14.4s (11/11) FINISHED
+    ...
+    root@PC:/mnt/c/Users/emrea/js-app# docker tag my-app:1.1 731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.1
+    
+    root@PC:/mnt/c/Users/emrea/js-app# docker push 731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.1
+    The push refers to repository [731872836472.dkr.ecr.eu-central-1.amazonaws.com/my-app]
+    cba6f0f7f514: Pushed
+    fb899bcb8294: Pushed
+    ...
+    1.1: digest: sha256:b66fee87f8f9fd58d93f7b97329648f34b2957975fb0f00e74af64be5c1aab20 size: 856
+```
+<img width="1631" height="624" alt="image" src="https://github.com/user-attachments/assets/4c8b9763-6c25-423c-b4bb-a2d74dfffbbb" />
+
+
+
  
 </details>
 
