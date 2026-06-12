@@ -677,29 +677,162 @@ Resolved WSL cross-filesystem permission restrictions by migrating the `.pem` fi
 <summary>Introduction to AWS CLI - Part 2</summary>
  <br />
  
- **content will be here**
+### Demo Executed: EC2 Advanced Querying & IAM Identity Lifecycle Management
+
+#### Overview
+Demonstrated programmatic querying of AWS EC2 instances and the comprehensive lifecycle management of AWS Identity and Access Management (IAM) entities. The workflow included utilizing JMESPath queries to filter active infrastructure, provisioning a custom IAM hierarchical structure (Users and Groups), and attaching both AWS-managed and custom-authored JSON policies. Finally, the newly established permission boundaries were validated by configuring programmatic access keys and testing active authorization scopes.
+
+#### Execution Logs & Artifacts
+
+**Used filter and query options (EC2)**
+Extracted specific EC2 instance IDs by utilizing JMESPath queries and tag-based filters (`web-server-with-docker`), optimizing the standard JSON payload output:
+```bash
+    root@PC:~/.ssh# aws ec2 describe-instances --filters "Name=tag:Type,Values=web-server-with-docker" --query "Reservations[].Instances[].InstanceId"
+    [
+        "i-04035f9eae72a81c2"
+    ]
+```
+**Created Group**
+Provisioned a new IAM organizational group:
+```bash
+    root@PC:~/.ssh# aws iam create-group --group-name MyGroupCli
+    {
+        "Group": {
+            "Path": "/",
+            "GroupName": "MyGroupCli",
+            "GroupId": "AGPA2UZYFHN4OLFBBGEFV",
+            "Arn": "arn:aws:iam::731872836472:group/MyGroupCli",
+            "CreateDate": "2026-06-12T13:42:11+00:00"
+        }
+    }
+```
+<img width="1648" height="211" alt="image" src="https://github.com/user-attachments/assets/8db2a7f5-d5af-4c1c-a817-e07e51167ac9" />
+
+**Created User**
+Provisioned a new IAM identity:
+```bash
+    root@PC:~/.ssh# aws iam create-user --user-name MyUserCli
+    {
+        "User": {
+            "Path": "/",
+            "UserName": "MyUserCli",
+            "UserId": "AIDA2UZYFHN4KJDERGOUB",
+            "Arn": "arn:aws:iam::731872836472:user/MyUserCli",
+            "CreateDate": "2026-06-12T14:02:20+00:00"
+        }
+    }
+```
+<img width="1629" height="406" alt="image" src="https://github.com/user-attachments/assets/f38b6ae1-ebdd-4a0c-9ff8-a3dbc85a8a65" />
+
+**Added User to Group**
+Assigned the identity to the newly created group to enforce inherited role-based access control (RBAC):
+```bash
+    root@PC:~/.ssh# aws iam add-user-to-group --user-name MyUserCli --group-name MyGroupCli
+    root@PC:~/.ssh# aws iam get-group --group-name MyGroupCli
+    {
+        "Users": [
+            {
+                "Path": "/",
+                "UserName": "MyUserCli",
+                "UserId": "AIDA2UZYFHN4KJDERGOUB",
+                "Arn": "arn:aws:iam::731872836472:user/MyUserCli",
+                "CreateDate": "2026-06-12T14:02:20+00:00"
+            }
+        ],
+        "Group": {
+            "Path": "/",
+            "GroupName": "MyGroupCli",
+            ...
+        }
+    }
+```
+<img width="1900" height="581" alt="image" src="https://github.com/user-attachments/assets/a79d7320-c9ed-4264-a874-0faf9a22efd3" />
+
+**Assigned policy to Group**
+Attached the AWS-managed `AmazonEC2FullAccess` policy to the group to grant infrastructure management capabilities:
+```bash
+    root@PC:~/.ssh# aws iam attach-group-policy --group-name MyGroupCli --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
+    
+    root@PC:~/.ssh# aws iam list-attached-group-policies --group-name MyGroupCli
+    {
+        "AttachedPolicies": [
+            {
+                "PolicyName": "AmazonEC2FullAccess",
+                "PolicyArn": "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+            }
+        ]
+    }
+```
+**Created credentials for new User**
+Established a login profile with an initial password to enable AWS Management Console access for the user:
+```bash
+    root@PC:~/.ssh# aws iam create-login-profile --user-name MyUSerCli --password MyPassword!
+    {
+        "LoginProfile": {
+            "UserName": "MyUserCli",
+            "CreateDate": "2026-06-12T14:24:44+00:00",
+            "PasswordResetRequired": false
+        }
+    }
+```
+**Created a new Policy and assigned to newly created Group**
+Authored a local JSON policy (`changePwdPolicy.json`) allowing password modifications, deployed it to AWS, and attached it to the target group:
+```bash
+    root@PC:~# aws iam create-policy --policy-name changePwd --policy-document file://changePwdPolicy.json
+    {
+        "Policy": {
+            "PolicyName": "changePwd",
+            "PolicyId": "ANPA2UZYFHN4ECFNK233R",
+            "Arn": "arn:aws:iam::731872836472:policy/changePwd",
+            "Path": "/",
+            "DefaultVersionId": "v1",
+            "AttachmentCount": 0,
+            ...
+        }
+    }
+    root@PC:~# aws iam attach-group-policy --group-name MyGroupCli --policy-arn arn:aws:iam::731872836472:policy/changePwd
+```
+<img width="1621" height="605" alt="image" src="https://github.com/user-attachments/assets/53bef617-72a4-419a-be9e-431661a57a4b" />
+
+**Created access keys for newly created User**
+Generated programmatic API keys for local CLI authentication:
+```bash
+    root@PC:~# aws iam create-access-key --user-name MyUserCli
+    {
+        "AccessKey": {
+            "UserName": "MyUserCli",
+            "AccessKeyId": "**********",
+            "Status": "Active",
+            "SecretAccessKey": "**********",
+            "CreateDate": "2026-06-12T14:36:17+00:00"
+        }
+    }
+```
+**Programmatic Authentication & Authorization Validation**
+(Note: Validates the UI login behavior securely via programmatic endpoint testing). Overwrote local session keys to assume the identity of `MyUserCli`. Verified EC2 read access was permitted while IAM administration was explicitly denied:
+```bash
+    root@PC:~# export AWS_ACCESS_KEY_ID=**********
+    root@PC:~# export AWS_SECRET_ACCESS_KEY=**********
+    
+    root@PC:~# aws ec2 describe-instances
+    {
+        "Reservations": [
+            {
+                "ReservationId": "r-0e3f7abe0d6c32567",
+                "OwnerId": "731872836472",
+                ...
+    
+    root@PC:~# aws iam create-user --user-name test
+    aws: [ERROR]: An error occurred (AccessDenied) when calling the CreateUser operation: User: arn:aws:iam::731872836472:user/MyUserCli is not authorized to perform: iam:CreateUser on resource: arn:aws:iam::731872836472:user/test because no identity-based policy allows the iam:CreateUser action
+```
+
+<img width="1898" height="896" alt="image" src="https://github.com/user-attachments/assets/c7cea04c-bf07-4c12-807a-4bc4609e43b9" />
+
  
 </details>
 
 ******
 
-<details>
-<summary>AWS & Terraform Preview</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-<summary>Container Services on AWS Preview</summary>
- <br />
- 
- **content will be here**
- 
-</details>
 
 
 
