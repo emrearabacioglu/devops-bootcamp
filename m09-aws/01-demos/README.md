@@ -525,7 +525,149 @@ Compiled a subsequent version (`1.1`), updated the corresponding ECR tag, and pu
 <summary>Introduction to AWS CLI - Part 1</summary>
  <br />
  
- **content will be here**
+### Demo Executed: EC2 Infrastructure Provisioning & Reconnaissance via AWS CLI
+
+#### Overview
+Demonstrated a comprehensive workflow for exploring, provisioning, and configuring AWS EC2 infrastructure exclusively through the AWS CLI. The operation involved verifying local IAM configurations, performing network reconnaissance to retrieve existing VPC and Subnet details, and dynamically creating a target-specific Security Group with restricted inbound rules. Additionally, the process showcased the generation of a new SSH key pair, successfully launching a `t2.micro` instance, and resolving WSL-to-Linux file permission constraints to establish a secure remote SSH session.
+
+#### Execution Logs & Artifacts
+
+Verified active AWS CLI configuration and validated stored IAM credentials:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws configure
+    AWS Access Key ID [****************QHCO]: ****************QHCO
+    AWS Secret Access Key [****************b8EN]: ****************b8EN
+    Default region name [eu-central-1]: eu-central-1
+    
+    root@PC:/mnt/c/Users/emrea# cat ~/.aws/credentials
+    [default]
+    aws_access_key_id = ****************QHCO
+    aws_secret_access_key = ****************b8EN
+```
+Conducted network reconnaissance to identify the default VPC and target Availability Zone subnets:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws ec2 describe-vpcs
+    {
+        "Vpcs": [
+            {
+                "VpcId": "vpc-0a332f5fe30a6dad5",
+                "CidrBlock": "172.31.0.0/16",
+                "IsDefault": true
+                ...
+            }
+        ]
+    }
+    
+    root@PC:/mnt/c/Users/emrea# aws ec2 describe-subnets
+    {
+        "Subnets": [
+            {
+                "SubnetId": "subnet-0e7c3045a7bed0241",
+                "VpcId": "vpc-0a332f5fe30a6dad5",
+                "CidrBlock": "172.31.0.0/20",
+                "AvailabilityZone": "eu-central-1c"
+                ...
+            }
+        ]
+    }
+```
+Created a custom Security Group (`my-sg`) and authorized inbound SSH (TCP/22) traffic from a designated IP:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws ec2 create-security-group --group-name my-sg --description "my SG" --vpc-id vpc-0a332f5fe30a6dad5
+    {
+        "GroupId": "sg-0d8d98c7c091aa89d",
+        "SecurityGroupArn": "arn:aws:ec2:eu-central-1:731872836472:security-group/sg-0d8d98c7c091aa89d"
+    }
+
+    root@PC:/mnt/c/Users/emrea# aws ec2 authorize-security-group-ingress \
+    > --group-id sg-0d8d98c7c091aa89d \
+    > --protocol tcp \
+    > --port 22 \
+    > --cidr 195.174.90.118/32
+    
+    root@PC:/mnt/c/Users/emrea# aws ec2 describe-security-groups --group-ids sg-0d8d98c7c091aa89d
+    {
+        "SecurityGroups": [
+            {
+                "GroupId": "sg-0d8d98c7c091aa89d",
+                "IpPermissions": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 22,
+                        "ToPort": 22,
+                        "IpRanges": [{"CidrIp": "195.174.90.118/32"}]
+                    }
+                ]
+            }
+        ]
+    }
+```
+<img width="1901" height="530" alt="image" src="https://github.com/user-attachments/assets/38de84ed-9602-4861-988f-227e8e9844d9" />
+
+Generated an RSA key pair (`MyKpCli.pem`) for programmatic instance access:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws ec2 create-key-pair \
+    > --key-name MyKpCli \
+    > --query 'KeyMaterial' \
+    > --output text > MyKpCli.pem
+```
+Provisioned the EC2 instance using the dynamically retrieved subnet and newly created security assets, then verified its operational state:
+```bash
+    root@PC:/mnt/c/Users/emrea# aws ec2 run-instances \
+    > --image-id ami-036bdae36143a955f \
+    > --count 1 \
+    > --instance-type t2.micro \
+    > --key-name MyKpCli \
+    > --security-group-ids sg-0d8d98c7c091aa89d \
+    > --subnet-id subnet-0e7c3045a7bed0241
+    
+    root@PC:/mnt/c/Users/emrea# aws ec2 describe-instances
+    {
+        "Instances": [
+            {
+                "InstanceId": "i-077580233aa60e75c",
+                "State": {"Code": 16, "Name": "running"},
+                "PrivateIpAddress": "172.31.14.74",
+                "PublicIpAddress": "35.159.167.194",
+                "KeyName": "MyKpCli",
+                "SubnetId": "subnet-0e7c3045a7bed0241",
+                "VpcId": "vpc-0a332f5fe30a6dad5"
+            }
+        ]
+    }
+```
+<img width="1919" height="864" alt="image" src="https://github.com/user-attachments/assets/8046546b-abc5-455e-81f7-3531c1f048f5" />
+
+Resolved WSL cross-filesystem permission restrictions by migrating the `.pem` file to the native Linux home directory, secured its permissions, and established the SSH session:
+```bash
+    root@PC:~/.ssh# cp /mnt/c/Users/emrea/MyKpCli.pem ~/.ssh/
+    root@PC:~# chmod 400 ~/.ssh/MyKpCli.pem
+    root@PC:~# ls -l ~/.ssh/MyKpCli.pem
+    -r-------- 1 root root 1675 Jun 12 15:54 /root/.ssh/MyKpCli.pem
+    
+    root@PC:~# ssh -i .ssh/MyKpCli.pem ec2-user@35.159.167.194
+    Warning: Permanently added '35.159.167.194' (ED25519) to the list of known hosts.
+       ,     #_
+     ~\_  ####_        Amazon Linux 2023
+     ~~  \_#####\
+     ~~     \###|
+     ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+       ~~       V~' '->
+        ~~~         /
+          ~~._.   _/
+             _/ _/
+           _/m/'
+    [ec2-user@ip-172-31-14-74 ~]$
+```
+#### Command Summary
+* `aws configure`: Registers IAM credentials and default regional settings.
+* `aws ec2 describe-vpcs` & `describe-subnets`: Queries the AWS environment to fetch active networking infrastructure IDs.
+* `aws ec2 describe-security-groups`: Retrieves detailed configurations and rules attached to security profiles.
+* `aws ec2 create-security-group` & `authorize-security-group-ingress`: Constructs virtual firewalls and explicitly maps inbound traffic permissions.
+* `aws ec2 create-key-pair`: Outputs a new RSA private key for secure authentication.
+* `aws ec2 run-instances` & `describe-instances`: Triggers the deployment of a new virtual machine and tracks its boot state/assigned IPs.
+
+
  
 </details>
 
