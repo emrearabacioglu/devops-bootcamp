@@ -387,6 +387,10 @@ This is because you want to have the whole configuration for starting the docker
 
 Use repository: https://gitlab.com/twn-devops-bootcamp/latest/09-aws/aws-exercises
 
+↳ **Execution:**
+<img width="1568" height="341" alt="image" src="https://github.com/user-attachments/assets/54b715c2-af8c-45e1-b39d-7e4bbad680c0" />
+
+
 
 </details>
 
