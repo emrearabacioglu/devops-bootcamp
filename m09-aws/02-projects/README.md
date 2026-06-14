@@ -404,6 +404,88 @@ Use repository: https://gitlab.com/twn-devops-bootcamp/latest/09-aws/aws-exercis
  
 * Add a deployment step to the Jenkinsfile from the previous exercise’s project to deploy to EC2.
 
+  ↳ **Execution:**
+
+  **Jenkinsfile:**
+```groovy
+
+pipeline {
+    agent any
+    tools {
+        nodejs "my-nodejs"
+    }
+    environment {
+        DOCKER_USER = "emrearabacioglu"
+        IMAGE_NAME = "${DOCKER_USER}/nodejs-app:1.0.${BUILD_NUMBER}"
+    }
+    stages {
+        stage('increment version') {
+            steps {
+                dir('app') {
+                    sh 'npm version patch'
+                }
+            }
+        }
+        stage('Run tests') {
+            steps {
+                dir('app') {
+                    sh 'npm install'
+                    sh 'npm test'
+                }
+            }
+        }
+        stage('Build and Push docker image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh "docker build -t ${IMAGE_NAME} ."
+                    sh "echo ${PASS} | docker login -u ${USER} --password-stdin"
+                    sh "docker push ${IMAGE_NAME}"
+                }
+            }
+        }
+        stage('deploy to EC2') {
+            steps {
+                script {
+                   def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                   def ec2Instance = "ec2-user@63.186.60.132"
+
+                   sshagent(['ec2-server-key']) {
+                       sh "scp -o StrictHostKeyChecking=no server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                       sh "scp -o StrictHostKeyChecking=no docker-compose.yaml ${ec2Instance}:/home/ec2-user"
+                       sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
+                   }     
+                }
+            }
+        }
+        stage('commit version update') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh 'git config --global user.email "jenkins@example.com"'
+                    sh 'git config --global user.name "Jenkins"'
+                    sh 'git add app/package.json app/package-lock.json'
+                    sh 'git commit -m "ci: version bump"'
+                    sh "git push https://${USER}:${PASS}@github.com/emrearabacioglu/aws-exercises HEAD:main"
+                }
+            }
+        }
+    }     
+}
+
+```
+
+**Build successful:**
+
+<img width="1160" height="271" alt="image" src="https://github.com/user-attachments/assets/a4b56a8b-3a87-4858-a265-669a48e4d479" />
+
+**Terminal verification:**
+
+```bash
+[ec2-user@ip-10-0-1-129 ~]$ docker ps
+CONTAINER ID   IMAGE                              COMMAND                  CREATED          STATUS          PORTS                                       NAMES
+db7e18fecb63   emrearabacioglu/nodejs-app:1.0.5   "docker-entrypoint.s…"   16 seconds ago   Up 14 seconds   0.0.0.0:3000->3000/tcp, :::3000->3000/tcp   ec2-user-nodejs-app-1
+[ec2-user@ip-10-0-1-129 ~]$
+
+```
 
 </details>
 
