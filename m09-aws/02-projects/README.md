@@ -501,6 +501,35 @@ db7e18fecb63   emrearabacioglu/nodejs-app:1.0.5   "docker-entrypoint.s…"   16 
 
 * Configure the EC2 security group to access your application from a browser
 
+  ↳ **Execution:**
+
+```bash
+
+  root@PC:~# aws ec2 describe-instances --filters "Name=ip-address,Values=63.186.60.132" --query "Reservations[*].Instances[*].SecurityGroups[*].GroupId" --output text
+sg-054c25198e70e49d6
+root@PC:~# aws ec2 authorize-security-group-ingress --group-id sg-054c25198e70e49d6 --protocol tcp --port 3000 --cidr 0.0.0.0/0
+{
+    "Return": true,
+    "SecurityGroupRules": [
+        {
+            "SecurityGroupRuleId": "sgr-05aba93134a13d161",
+            "GroupId": "sg-054c25198e70e49d6",
+            "GroupOwnerId": "731872836472",
+            "IsEgress": false,
+            "IpProtocol": "tcp",
+            "FromPort": 3000,
+            "ToPort": 3000,
+            "CidrIpv4": "0.0.0.0/0",
+            "SecurityGroupRuleArn": "arn:aws:ec2:eu-central-1:731872836472:security-group-rule/sgr-05aba93134a13d161"
+        }
+    ]
+}
+root@PC:~#
+
+```
+**Browser Connection:**
+
+<img width="883" height="626" alt="image" src="https://github.com/user-attachments/assets/c5aa6122-4627-44a2-b85a-a1d68a8771df" />
 
 </details>
 
@@ -516,6 +545,106 @@ db7e18fecb63   emrearabacioglu/nodejs-app:1.0.5   "docker-entrypoint.s…"   16 
 
 * Add branch based logic to Jenkinsfile
 * Add webhook to trigger pipeline automatically
+
+↳ **Execution:**
+
+Configured the Jenkinsfile to restrict image building and EC2 deployment exclusively to the `main` branch, ensuring feature branches only execute automated tests. Implemented a safeguard using the `changelog` parameter to automatically ignore `ci: version bump` commits, effectively preventing infinite build loops triggered by the pipeline's own repository updates.
+
+**Jenkinsfile:**
+
+```groovy
+
+pipeline {
+    agent any
+    tools {
+        nodejs "my-nodejs"
+    }
+    environment {
+        DOCKER_USER = "emrearabacioglu"
+        IMAGE_NAME = "${DOCKER_USER}/nodejs-app:1.0.${BUILD_NUMBER}"
+    }
+    stages {
+        stage('increment version') {
+            when { 
+                not { changelog '.*ci: version bump.*' } 
+            }
+            steps {
+                dir('app') {
+                    sh 'npm version patch'
+                }
+            }
+        }
+        stage('Run tests') {
+            when { 
+                not { changelog '.*ci: version bump.*' } 
+            }
+            steps {
+                dir('app') {
+                    sh 'npm install'
+                    sh 'npm test'
+                }
+            }
+        }
+        stage('Build and Push docker image') {
+            when { 
+                allOf {
+                    branch 'main'
+                    not { changelog '.*ci: version bump.*' }
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-repo', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh "docker build -t ${IMAGE_NAME} ."
+                    sh "echo ${PASS} | docker login -u ${USER} --password-stdin"
+                    sh "docker push ${IMAGE_NAME}"
+                }
+            }
+        }
+        stage('deploy to EC2') {
+            when { 
+                allOf {
+                    branch 'main'
+                    not { changelog '.*ci: version bump.*' }
+                }
+            }
+            steps {
+                script {
+                   def shellCmd = "bash ./server-cmds.sh ${IMAGE_NAME}"
+                   def ec2Instance = "ec2-user@63.186.60.132"
+
+                   sshagent(['ec2-server-key']) {
+                       sh "scp -o StrictHostKeyChecking=no server-cmds.sh ${ec2Instance}:/home/ec2-user"
+                       sh "scp -o StrictHostKeyChecking=no docker-compose.yaml ${ec2Instance}:/home/ec2-user"
+                       sh "ssh -o StrictHostKeyChecking=no ${ec2Instance} ${shellCmd}"
+                   }     
+                }
+            }
+        }
+        stage('commit version update') {
+            when { 
+                allOf {
+                    branch 'main'
+                    not { changelog '.*ci: version bump.*' }
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+                    sh 'git config --global user.email "jenkins@example.com"'
+                    sh 'git config --global user.name "Jenkins"'
+                    sh 'git add app/package.json app/package-lock.json'
+                    sh 'git commit -m "ci: version bump"'
+                    sh "git push https://${USER}:${PASS}@github.com/emrearabacioglu/aws-exercises HEAD:main"
+                }
+            }
+        }
+    }     
+}
+```
+
+**Webhook:**
+
+<img width="1380" height="435" alt="image" src="https://github.com/user-attachments/assets/a181bd92-2c31-4ffd-890e-fdcf7cc97f89" />
+
 
 </details>
 
