@@ -1,39 +1,6 @@
 ******
 
 <details>
-<summary>Introduction to Kubernetes</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-
-<summary>Basic Concepts and Main K8s Components</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-******
-
-<details>
-
-<summary>Kubernetes Architecture</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
 <summary>Minikube and kubectl - Local Setup</summary>
  <br />
  
