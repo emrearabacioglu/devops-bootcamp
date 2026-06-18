@@ -64,8 +64,95 @@ minikube   Ready    control-plane   8m4s   v1.35.1
 <summary>Kubernetes CLI - Main kubectl commands</summary>
  <br />
  
- **content will be here**
- 
+### Kubernetes Workloads Configuration & Management
+
+#### Created Nginx Deployment
+Demonstrated the imperative creation of an Nginx deployment. Verified the deployment and pod status to ensure the container was provisioned and running successfully.
+
+```bash
+    root@PC:~# kubectl create deployment nginx-depl --image=nginx
+    deployment.apps/nginx-depl created
+    root@PC:~# kubectl get deployment
+    NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+    nginx-depl   1/1     1            1           13s
+    root@PC:~# kubectl get pod
+    NAME                          READY   STATUS    RESTARTS   AGE
+    nginx-depl-569bd7dcf9-l7vmx   1/1     Running   0          26s
+```
+#### Edited Deployment
+Modified the live deployment configuration dynamically. Successfully resolved YAML syntax validations during the edit, resulting in a configuration update and the progression of a new ReplicaSet.
+```bash
+    root@PC:~# kubectl edit deployment nginx-depl
+    deployment.apps/nginx-depl edited
+    root@PC:~# kubectl get replicaset
+    NAME                    DESIRED   CURRENT   READY   AGE
+    nginx-depl-569bd7dcf9   0         0         0       13m
+    nginx-depl-7fb6fc4d75   1         1         1       24s
+```
+#### Created MongoDB Deployment
+Provisioned a MongoDB deployment and utilized the describe function to inspect the pod's lifecycle events, verifying the image pull status, container creation, and cluster assignment.
+```bash
+    root@PC:~# kubectl create deployment mongo-deployment --image=mongo
+    deployment.apps/mongo-deployment created
+    root@PC:~# kubectl describe pod mongo-deployment-5dc7f4b7d7-9pxdj
+    ...
+    Events:
+      Type    Reason     Age   From               Message
+      ----    ------     ----  ----               -------
+      Normal  Scheduled  51s   default-scheduler  Successfully assigned default/mongo-deployment-5dc7f4b7d7-9pxdj to minikube
+      Normal  Pulling    51s   kubelet            Pulling image "mongo"
+      Normal  Pulled     12s   kubelet            Successfully pulled image "mongo" in 38.098s
+      Normal  Created    12s   kubelet            Container created
+      Normal  Started    12s   kubelet            Container started
+```
+#### Inspected Logs of a Pod
+Extracted and reviewed the internal application logs of the running Nginx container to verify the startup sequence, environmental configurations, and worker process initialization.
+```bash
+    root@PC:~# kubectl logs nginx-depl-7fb6fc4d75-9nd7n
+    /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+    10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+    ...
+    2026/06/18 07:01:31 [notice] 1#1: start worker processes
+    2026/06/18 07:01:31 [notice] 1#1: start worker process 29
+```
+#### Got Shell of a Running Container
+Executed an interactive shell session directly inside the running MongoDB pod to inspect the internal container filesystem and directory structure.
+```bash
+    root@PC:~# kubectl exec -it mongo-deployment-5dc7f4b7d7-9pxdj -- bin/bash
+    root@mongo-deployment-5dc7f4b7d7-9pxdj:/# ls
+    bin  boot  data  dev  docker-entrypoint-initdb.d  etc  home  js-yaml.js  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+    root@mongo-deployment-5dc7f4b7d7-9pxdj:/# exit
+    exit
+```
+#### Deleted Deployment
+Cleaned up the cluster environment by deleting the previously created deployments, confirming the removal of associated resources and ReplicaSets.
+```bash
+    root@PC:~# kubectl delete deployment mongo-deployment
+    deployment.apps "mongo-deployment" deleted from default namespace
+    root@PC:~# kubectl delete deployment nginx-depl
+    deployment.apps "nginx-depl" deleted from default namespace
+```
+#### Applied Configuration File
+Demonstrated declarative infrastructure management by applying a YAML configuration file to deploy Nginx. Subsequently updated the YAML to scale the replicas and reapplied the configuration, validating the deployment of additional pods.
+```bash
+    root@PC:~# kubectl apply -f nginx-deployment.yaml
+    deployment.apps/nginx-deployment created
+    root@PC:~# kubectl apply -f nginx-deployment.yaml
+    deployment.apps/nginx-deployment configured
+    root@PC:~# kubectl get deployment
+    NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+    nginx-deployment   2/2     2            2           49s
+```
+#### Commands Summary
+* `kubectl get [resource]`: Retrieves and lists the status of specified Kubernetes resources (nodes, pods, services, deployments, replicasets).
+* `kubectl create deployment`: Imperatively generates a new deployment utilizing a specified container image.
+* `kubectl edit deployment`: Opens the live configuration of a deployment in the default text editor for immediate modifications.
+* `kubectl describe pod`: Provides a detailed lifecycle, state summary, and event history of a specific pod.
+* `kubectl logs`: Fetches the standard output and error logs generated by a specific container.
+* `kubectl exec -it`: Executes a command interactively inside a running container (e.g., opening a bash shell).
+* `kubectl delete deployment`: Removes a deployment and terminates its managed pods from the cluster.
+* `kubectl apply -f`: Declaratively creates or updates resources based on the state defined in a provided YAML file.
+
 </details>
 
 
