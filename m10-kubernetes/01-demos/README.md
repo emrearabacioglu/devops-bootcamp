@@ -162,7 +162,151 @@ Demonstrated declarative infrastructure management by applying a YAML configurat
 <summary>Introduction to YAML Configuration File</summary>
  <br />
  
- **content will be here**
+ ```bash
+root@PC:~# cat nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.25
+        ports:
+        - containerPort: 8080
+root@PC:~# cat nginx-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+root@PC:~# kubectl apply -f nginx-deployment.yaml
+deployment.apps/nginx-deployment configured
+root@PC:~# kubectl apply -f nginx-service.yaml
+service/nginx-service created
+root@PC:~# kubectl get pod
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-58f47d84fb-99zq5   1/1     Running   0          17s
+nginx-deployment-58f47d84fb-mqppq   1/1     Running   0          15s
+root@PC:~# kubectl get service
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+kubernetes      ClusterIP   10.96.0.1       <none>        443/TCP   26h
+nginx-service   ClusterIP   10.99.139.225   <none>        80/TCP    11s
+root@PC:~# kubectl describe service nginx-service
+Name:                     nginx-service
+Namespace:                default
+Labels:                   <none>
+Annotations:              <none>
+Selector:                 app=nginx
+Type:                     ClusterIP
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       10.99.139.225
+IPs:                      10.99.139.225
+Port:                     <unset>  80/TCP
+TargetPort:               8080/TCP
+Endpoints:                10.244.0.8:8080,10.244.0.9:8080
+Session Affinity:         None
+Internal Traffic Policy:  Cluster
+Events:                   <none>
+root@PC:~# kubectl get pod -o wide
+NAME                                READY   STATUS    RESTARTS   AGE    IP           NODE       NOMINATED NODE   READINESS GATES
+nginx-deployment-58f47d84fb-99zq5   1/1     Running   0          104s   10.244.0.8   minikube   <none>           <none>
+nginx-deployment-58f47d84fb-mqppq   1/1     Running   0          102s   10.244.0.9   minikube   <none>           <none>
+root@PC:~# kubectl get deployment nginx-deployment -o yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "2"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"nginx"},"name":"nginx-deployment","namespace":"default"},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"nginx"}},"template":{"metadata":{"labels":{"app":"nginx"}},"spec":{"containers":[{"image":"nginx:1.25","name":"nginx","ports":[{"containerPort":8080}]}]}}}}
+  creationTimestamp: "2026-06-18T11:19:46Z"
+  generation: 3
+  labels:
+    app: nginx
+  name: nginx-deployment
+  namespace: default
+  resourceVersion: "12767"
+  uid: 79e2867b-6b6b-47a9-8a03-78d17d7f69ce
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: nginx:1.25
+        imagePullPolicy: IfNotPresent
+        name: nginx
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 2
+  conditions:
+  - lastTransitionTime: "2026-06-18T11:20:25Z"
+    lastUpdateTime: "2026-06-18T11:20:25Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-06-18T11:19:46Z"
+    lastUpdateTime: "2026-06-19T09:06:00Z"
+    message: ReplicaSet "nginx-deployment-58f47d84fb" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 3
+  readyReplicas: 2
+  replicas: 2
+  terminatingReplicas: 0
+  updatedReplicas: 2
+root@PC:~# kubectl get deployment nginx-deployment -o yaml >nginx-deployment-result.yaml
+root@PC:~# code nginx-deployment-result.yaml
+root@PC:~# kubectl delete -f nginx-deployment.yaml
+deployment.apps "nginx-deployment" deleted from default namespace
+root@PC:~# kubectl delete -f nginx-service.yaml
+service "nginx-service" deleted from default namespace
+root@PC:~#
+
+```
  
 </details>
 
