@@ -491,55 +491,168 @@ Deployed the Mongo Express administrative interface coupled with a LoadBalancer 
 
 ******
 
-<details>
-<summary>Organizing components with Namespaces</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Kubernetes Services</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Kubernetes Ingress</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Persisting Data with Volumes</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
 
 <details>
 <summary>ConfigMap & Secret Volume Types</summary>
  <br />
  
- **content will be here**
+### Kubernetes Mosquitto Configuration and Volume Mounting
+
+#### Created Mosquitto Deployment without any volumes
+Demonstrated the deployment of a standalone Eclipse Mosquitto broker to inspect the default container environment. Verified the default configuration structure by executing into the running pod before safely deleting the unconfigured deployment.
+
+    root@PC:~# cat mosquitto-without-volumes.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mosquitto
+      labels:
+        app: mosquitto
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: mosquitto
+      template:
+        metadata:
+          labels:
+            app: mosquitto
+        spec:
+            containers:
+              - name: mosquitto
+                image: eclipse-mosquitto:2.0
+                ports:
+                  - containerPort: 1883
+    
+    root@PC:~# kubectl apply -f mosquitto-without-volumes.yaml
+    deployment.apps/mosquitto created
+    
+    root@PC:~# kubectl get pod
+    NAME                                 READY   STATUS    RESTARTS       AGE
+    mongo-express-5747d566b9-wz2t6       1/1     Running   2 (3h39m ago)  61d
+    mongodb-deployment-df5cd6568-5gp67   1/1     Running   2 (3h39m ago)  61d
+    mosquitto-8bbb9c957-jjqq8            1/1     Running   0              11s
+    
+    root@PC:~# kubectl exec -it mosquitto-8bbb9c957-jjqq8 -- /bin/sh
+    / # cd mosquitto/config/
+    /mosquitto/config # cat mosquitto.conf
+    # Config file for mosquitto
+    #
+    # See mosquitto.conf(5) for more information.
+    #
+    # Default values are shown, uncomment to change.
+    ...
+    /mosquitto/config # exit
+    
+    root@PC:~# kubectl delete -f mosquitto-without-volumes.yaml
+    deployment.apps "mosquitto" deleted from default namespace
+
+#### Created ConfigMap component to overwrite mosquitto.conf file
+Configured a Kubernetes ConfigMap to manage and overwrite the default broker settings, specifically defining log destinations, types, timestamps, and custom listener ports.
+
+    root@PC:~# cat config-file.yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+        name: mosquitto-config-file
+    data:
+        mosquitto.conf: |
+            log_dest stdout
+            log_type all
+            log_timestamp true
+            listener 9001
+            
+    root@PC:~# kubectl apply -f config-file.yaml
+    configmap/mosquitto-config-file created
+
+#### Created Secret component to add passwords file
+Generated a Kubernetes Secret resource using Opaque type encoding to securely manage and inject authentication credentials into the cluster environment.
+
+    root@PC:~# cat secret-file.yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+        name: mosquitto-secret-file
+    type: Opaque
+    data:
+        secret.file: |
+            VGVjaFdvcmxkMjAyMyEgLW4K
+            
+    root@PC:~# kubectl apply -f secret-file.yaml
+    secret/mosquitto-secret-file created
+    
+    root@PC:~# kubectl get secret
+    NAME                    TYPE     DATA   AGE
+    mongodb-secret          Opaque   2      61d
+    mosquitto-secret-file   Opaque   1      10s
+    
+    root@PC:~# kubectl get configmap
+    NAME                    DATA   AGE
+    kube-root-ca.crt        1      62d
+    mongodb-configmap       1      61d
+    mosquitto-config-file   1      24s
+
+#### Adjusted Mosquitto Deployment to include volumes
+Modified the Mosquitto deployment architecture to mount the previously created ConfigMap and Secret as container volumes. Validated the successful volume attachments by executing into the pod and verifying that the custom configuration and decrypted secret data were correctly populated in their respective directory paths.
+
+    root@PC:~# cat mosquitto.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mosquitto
+      labels:
+        app: mosquitto
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: mosquitto
+      template:
+        metadata:
+          labels:
+            app: mosquitto
+        spec:
+            containers:
+              - name: mosquitto
+                image: eclipse-mosquitto:2.0
+                ports:
+                  - containerPort: 1883
+                volumeMounts:
+                  - name: mosquitto-config
+                    mountPath: /mosquitto/config
+                  - name: mosquitto-secret
+                    mountPath: /mosquitto/secret
+                    readOnly: true
+            volumes:
+              - name: mosquitto-config
+                configMap:
+                  name: mosquitto-config-file
+              - name: mosquitto-secret
+                secret:
+                  secretName: mosquitto-secret-file
+                  
+    root@PC:~# kubectl apply -f mosquitto.yaml
+    deployment.apps/mosquitto created
+    
+    root@PC:~# kubectl get pod
+    NAME                                 READY   STATUS    RESTARTS       AGE
+    mongo-express-5747d566b9-wz2t6       1/1     Running   2 (3h54m ago)  61d
+    mongodb-deployment-df5cd6568-5gp67   1/1     Running   2 (3h54m ago)  61d
+    mosquitto-cf9f594cd-dr9wz            1/1     Running   0              12s
+    
+    root@PC:~# kubectl exec -it mosquitto-cf9f594cd-dr9wz -- /bin/sh
+    / # cd mosquitto/secret/
+    /mosquitto/secret # cat secret.file
+    TechWorld2023! -n
+    
+    /mosquitto/secret # cd ../config/
+    /mosquitto/config # cat mosquitto.conf
+    log_dest stdout
+    log_type all
+    log_timestamp true
+    listener 9001
+    /mosquitto/config # exit
+
  
 </details>
 
