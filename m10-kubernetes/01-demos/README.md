@@ -827,7 +827,156 @@ Successfully established an end-to-end connection to the Mongo Express graphical
 <summary>Demo: Deploy App from Private Docker Registry</summary>
  <br />
  
- **content will be here**
+### Integrating Private AWS ECR with Kubernetes Deployments
+
+#### Setup a Private Docker Repository (AWS Elastic Container Registry)
+Initiated the creation of a private Elastic Container Registry (ECR) repository. Resolved IAM authorization barriers by reconfiguring the local AWS CLI environment with appropriate administrative credentials, resulting in a successfully provisioned registry for the application artifacts.
+
+    root@PC:/mnt/c/Users/emrea/js-app# aws ecr create-repository --repository-name js-app --region eu-central-1
+    aws: [ERROR]: An error occurred (AccessDeniedException) when calling the CreateRepository operation...
+    
+    root@PC:/mnt/c/Users/emrea/js-app# aws configure
+    AWS Access Key ID [****************2IFO]: ******
+    AWS Secret Access Key [****************rPq7]: ******
+    
+    root@PC:/mnt/c/Users/emrea/js-app# aws ecr create-repository --repository-name js-app --region eu-central-1
+    {
+        "repository": {
+            "repositoryArn": "arn:aws:ecr:eu-central-1:731872836472:repository/js-app",
+            "repositoryUri": "731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app",
+            ...
+        }
+    }
+
+#### Have a demo application
+Cloned the target Node.js application from a remote repository, executed a local multi-stage Docker build, and tagged the resulting artifact. Successfully pushed the versioned image (`1.2`) to the previously configured private AWS ECR repository.
+
+    root@PC:/mnt/c/Users/emrea# git clone https://gitlab.com/twn-devops-bootcamp/latest/10-kubernetes/js-app.git
+    
+    root@PC:/mnt/c/Users/emrea/js-app# docker build -t js-app .
+    
+    root@PC:/mnt/c/Users/emrea/js-app# docker tag js-app:latest 731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app:1.2
+    
+    root@PC:/mnt/c/Users/emrea/js-app# docker push 731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app:1.2
+    The push refers to repository [731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app]
+    ...
+    1.2: digest: sha256:8300baebb... size: 856
+
+#### Logged in to AWS Container Repository | docker login and create docker config.json file
+Authenticated the local Docker daemon with AWS ECR. Bypassed Minikube root privilege restrictions to start the cluster, established an SSH session, and replicated the authentication directly within the node. The resulting Docker configuration file was copied back to the host system and encoded for Kubernetes Secret integration.
+
+    root@PC:~# aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 731872836472.dkr.ecr.eu-central-1.amazonaws.com
+    Login Succeeded
+    
+    root@PC:~# minikube start --force
+    
+    root@PC:~# minikube ssh
+    docker@minikube:~$ docker login --username AWS -p eyJwYXls... 731872836472.dkr.ecr.eu-central-1.amazonaws.com
+    Login Succeeded
+    
+    root@PC:~# minikube cp minikube:/home/docker/.docker/config.json ~/.docker/config.json
+    
+    root@PC:~# cat .docker/config.json | base64
+    ewoJImF1dGhzIjogewoJCSI3MzE4NzI4MzY0NzIuZGtyLmVjci5ldS1jZW50cmFsLTEuYW1hem9u
+    YXdzLmNvbSI6IHsKCQkJImF1dGgiOiAiUVZkVE9tVjVTbmRaV0d4ellqSkdhMGxxYjJsUldGVjZZ
+    ...
+    Rk9YMFVGQlhSVlZQVkhoUVFWRjFkMVJvU0hsVE4xYzNWa1UyV0UxNlRHcEtVMFJoU2twNlFXNWpX
+    bU5MVTFkT1NHMU5ObHBZTWtwaFdFbDVWVTVzWVRSVk9WRjFjbFJrVlV3d1ZuaHBTR0Y1TUUxWlNn
+    cHRhRGswV2s1WVRtczBTMXBPUkVOSFlUQkRNR2s1VFZWT1NWSXhiR0pEWWtwaWJrSlhhMHBSUVE5
+    Qk9TSUtDUTF9Cgl9Cn0=
+
+#### Created Secret component
+Demonstrated multiple methodologies for securely injecting registry credentials into the cluster. Initially structured a declarative YAML manifest utilizing the base64-encoded Docker configuration. Subsequently provisioned functional Secrets via imperative `kubectl` commands, utilizing both file-based (`--from-file`) and direct parameter (`--docker-server`) approaches to establish authentication.
+
+    root@PC:~# cat docker-secret.yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: my-registry-key
+    data:
+      .dockerconfigjson: ewoJImF1dGhzIjogewoJCSI3MzE4NzI4MzY0NzIuZGtyLmVjci5ldS1jZW50cmFsLTEuYW1hem9u
+    YXdzLmNvbSI6IHsKCQkJImF1dGgiOiAiUVZkVE9tVjVTbmRaV0d4ellqSkdhMGxxYjJsUldGVjZZ
+    bFpTY0ZwNWRGVlZSMUp4V25wQ1RVNXJkekJXV0ZaeFdteENjbU14UWxGaGExVjVVakF4U0ZSVlRu
+    ...
+    Rk9YMFVGQlhSVlZQVkhoUVFWRjFkMVJvU0hsVE4xYzNWa1UyV0UxNlRHcEtVMFJoU2twNlFXNWpX
+    bU5MVTFkT1NHMU5ObHBZTWtwaFdFbDVWVTVzWVRSVk9WRjFjbFJrVlV3d1ZuaHBTR0Y1TUUxWlNn
+    cHRhRGswV2s1WVRtczBTMXBPUkVOSFlUQkRNR2s1VFZWT1NWSXhiR0pEWWtwaWJrSlhhMHBSUVE5
+    Qk9TSUtDUTF9Cgl9Cn0=
+    type: kubernetes.io/dockerconfigjson
+    
+    root@PC:~# kubectl create secret generic my-registry-key --from-file=.dockerconfigjson=.docker/config.json --type=kubernetes.io/dockerconfigjson
+    secret/my-registry-key created
+    
+    root@PC:~# kubectl create secret docker-registry my-registry-key-two \
+    > --docker-server=https://731872836472.dkr.ecr.eu-central-1.amazonaws.com \
+    > --docker-username=AWS \
+    > --docker-password=eyJwYXls...
+    secret/my-registry-key-two created
+
+#### Configured Deployment for demo app
+Configured and evaluated the Kubernetes Deployment to pull the application from the private registry. Captured and resolved an `ImagePullBackOff` failure resulting from an initial lack of credentials. Remediated the issue by explicitly mapping the `imagePullSecrets` array to the newly created `my-registry-key-two` Secret, achieving a successful container deployment.
+
+    root@PC:~# cat my-app-deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: my-app
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: my-app
+      template:
+        metadata:
+          labels:
+            app: my-app
+        spec:
+          containers:
+          - name: my-app
+            image: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app:1.2
+            imagePullPolicy: Always
+            ports:
+            - containerPort: 3000
+            
+    root@PC:~# kubectl apply -f my-app-deployment.yaml
+    
+    root@PC:~# kubectl get pod
+    NAME                     READY   STATUS             RESTARTS   AGE
+    my-app-568ff5465-728m8   0/1     ImagePullBackOff   0          4s
+    
+    root@PC:~# kubectl delete -f my-app-deployment.yaml
+    
+    root@PC:~# cat my-app-deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: my-app-two
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: my-app-two
+      template:
+        metadata:
+          labels:
+            app: my-app-two
+        spec:
+          imagePullSecrets:
+          - name: my-registry-key-two
+          containers:
+          - name: my-app-two
+            image: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/js-app:1.2
+            imagePullPolicy: Always
+            ports:
+            - containerPort: 3000
+            
+    root@PC:~# kubectl apply -f my-app-deployment.yaml
+    deployment.apps/my-app-two created
+    
+    root@PC:~# kubectl get pod
+    NAME                          READY   STATUS    RESTARTS   AGE
+    my-app-two-5bdb94fbc4-lwc6n   1/1     Running   0          6s
+
  
 </details>
 
