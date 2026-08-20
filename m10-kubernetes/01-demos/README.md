@@ -983,8 +983,9 @@ Configured and evaluated the Kubernetes Deployment to pull the application from 
 
 ******
 
+
 <details>
-<summary>Extending the K8s API with Operators</summary>
+<summary>Demo project: Deploy Microservices Application & Best Practices </summary>
  <br />
  
  **content will be here**
@@ -994,49 +995,6 @@ Configured and evaluated the Kubernetes Deployment to pull the application from 
 
 ******
 
-<details>
-<summary>Secure your cluster - Authorization with RBAC</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Microservices in Kubernetes</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Demo project: Deploy Microservices Application</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Production & Security Best Practices</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
 
 <details>
 <summary>Demo project: Create Helm Chart for Microservices</summary>
