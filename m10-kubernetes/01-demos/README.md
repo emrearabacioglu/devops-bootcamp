@@ -657,37 +657,6 @@ Modified the Mosquitto deployment architecture to mount the previously created C
 </details>
 
 
-******
-
-<details>
-<summary>Deploying stateful Apps with StatefulSet</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Introduction to Managed Kubernetes Services</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Helm - Package Manager of Kubernetes</summary>
- <br />
- 
- **content will be here**
- 
-</details>
 
 
 ******
@@ -696,7 +665,158 @@ Modified the Mosquitto deployment architecture to mount the previously created C
 <summary>Helm Demo: Install a Stateful Application on Kubernetes using Helm</summary>
  <br />
  
- **content will be here**
+ ### Kubernetes Cluster Configuration & Stateful Deployments on Linode
+
+#### Created K8s cluster on Linode Kubernetes Engine
+Configured the local environment to authenticate and connect to a newly provisioned Linode Kubernetes Engine (LKE) cluster. Verified the successful initialization of the cluster nodes.
+
+<img width="1908" height="353" alt="image" src="https://github.com/user-attachments/assets/93420d43-fef2-4dbd-9540-7e0e7f3958c9" />
+
+
+    root@PC:~/helm# export KUBECONFIG=test-kubeconfig.yaml
+    root@PC:~/helm# kubectl get node
+    NAME                     STATUS   ROLES    AGE     VERSION
+    lke645862-950499-d6sh5   Ready    <none>   3m31s   v1.36.2
+    lke645862-950499-rx6k6   Ready    <none>   3m19s   v1.36.2
+
+#### Deployed replicated MongoDB (StatefulSet using Helm Chart) and configured Data Persistence with Linode Block Storage
+Installed the Helm package manager and deployed a 3-replica MongoDB StatefulSet using the official Bitnami chart. Enforced data persistence by mapping a custom values file to utilize Linode's block storage class, ensuring data durability across pod restarts.
+
+    root@PC:~/helm# curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash
+    root@PC:~/helm# helm repo add bitnami https://charts.bitnami.com/bitnami
+    "bitnami" has been added to your repositories
+    
+    root@PC:~/helm# cat helm-mongodb.yaml
+    architecture: replicaset
+    replicaCount: 3
+    persistence:
+      storageClass: "linode-block-storage"
+    auth:
+      rootPassword: secret-root-pwd
+      
+    root@PC:~/helm# helm install mongodb --values helm-mongodb.yaml bitnami/mongodb
+    NAME: mongodb
+    LAST DEPLOYED: Thu Aug 20 14:17:28 2026
+    NAMESPACE: default
+    STATUS: deployed
+    
+    root@PC:~/helm# kubectl get all
+    NAME                    READY   STATUS    RESTARTS   AGE
+    pod/mongodb-0           1/1     Running   0          4m
+    pod/mongodb-1           1/1     Running   0          3m5s
+    pod/mongodb-2           1/1     Running   0          117s
+    pod/mongodb-arbiter-0   1/1     Running   0          4m
+    
+    NAME                               READY   AGE
+    statefulset.apps/mongodb           3/3     4m
+    statefulset.apps/mongodb-arbiter   1/1     4m
+
+#### Deployed MongoExpress (Deployment and Service)
+Provisioned the Mongo Express web interface to act as a database management portal. Dynamically injected authentication credentials from the generated Kubernetes Secrets directly into the container's environment variables to establish a secure database connection.
+
+    root@PC:~/helm# cat helm-mongo-express.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: mongo-express
+      labels:
+        app: mongo-express
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: mongo-express
+      template:
+        metadata:
+          labels:
+            app: mongo-express
+        spec:
+          containers:
+          - name: mongo-express
+            image: mongo-express
+            ports:
+            - containerPort: 8081
+            env:
+            - name: ME_CONFIG_MONGODB_ADMINUSERNAME
+              value: root
+            - name: ME_CONFIG_MONGODB_ADMINPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb
+                  key: mongodb-root-password
+            - name: ME_CONFIG_MONGODB_URL
+              value: "mongodb://$(ME_CONFIG_MONGODB_ADMINUSERNAME):$(ME_CONFIG_MONGODB_ADMINPASSWORD)@mongodb-0.mongodb-headless:27017"
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: mongo-express-service
+    spec:
+      selector:
+        app: mongo-express
+      ports:
+        - protocol: TCP
+          port: 8081
+          targetPort: 8081
+          
+    root@PC:~/helm# kubectl apply -f helm-mongo-express.yaml
+    deployment.apps/mongo-express created
+    service/mongo-express-service created
+    
+    root@PC:~/helm# kubectl logs mongo-express-794fb84c64-k4lk2
+    Waiting for mongodb-0.mongodb-headless:27017...
+    No custom config.js found, loading config.default.js
+    Welcome to mongo-express 1.0.2
+    ------------------------
+    Mongo Express server listening at http://0.0.0.0:8081
+
+#### Deployed NGINX Ingress Controller as Loadbalancer (using Helm Chart)
+Pulled and deployed the official NGINX Ingress Controller via its OCI registry to manage incoming external HTTP/HTTPS traffic. Successfully validated the allocation of an external LoadBalancer IP (`85.90.246.91`) assigned by the cloud provider.
+
+    root@PC:~/helm# helm install nginx-ingress oci://ghcr.io/nginx/charts/nginx-ingress --set controller.reportIngressStatus.enable=true
+    NAME: nginx-ingress
+    LAST DEPLOYED: Thu Aug 20 14:32:48 2026
+    NAMESPACE: default
+    STATUS: deployed
+    
+    root@PC:~/helm# kubectl get svc
+    NAME                       TYPE           CLUSTER-IP       EXTERNAL-IP    PORT(S)                      AGE
+    nginx-ingress-controller   LoadBalancer   10.128.86.169    85.90.246.91   80:32260/TCP,443:31566/TCP   2m9s
+
+#### Configured Ingress rule
+Created and applied an Ingress routing resource to capture external traffic hitting the specified host address and accurately redirect it to the internal `mongo-express-service`.
+
+    root@PC:~/helm# cat helm-ingress-yaml
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+        name: mongo-express
+    spec:
+      ingressClassName: nginx-ingress
+      rules:
+      - host: 85-90-246-91.ip.linodeusercontent.com
+        http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: mongo-express-service
+                  port:
+                    number: 8081
+                    
+    root@PC:~/helm# kubectl apply -f helm-ingress-yaml
+    ingress.networking.k8s.io/mongo-express created
+    
+    root@PC:~/helm# kubectl get ingress
+    NAME            CLASS           HOSTS                                   ADDRESS   PORTS   AGE
+    mongo-express   nginx-ingress   85-90-246-91.ip.linodeusercontent.com             80      10s
+
+#### Connected via browser
+Successfully established an end-to-end connection to the Mongo Express graphical interface via the web browser by hitting the external LoadBalancer IP and authenticating with the default administrative credentials.
+<img width="1895" height="981" alt="image" src="https://github.com/user-attachments/assets/37b85b84-fded-4549-8632-4e10a7b69687" />
+
+
  
 </details>
 
