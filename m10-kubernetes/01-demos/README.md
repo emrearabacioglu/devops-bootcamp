@@ -1650,7 +1650,149 @@ Audited the active Services within the namespace to confirm internal connectivit
 <summary>Demo project: Create Helm Chart for Microservices</summary>
  <br />
  
- **content will be here**
+### Helm Chart Implementation for Microservices Architecture
+
+#### Created “microservices” Helm Chart
+Engineered a generic, reusable Helm chart named `microservice` to standardize the deployment of multiple stateless services. Utilizing Go template syntax, the `deployment.yaml` and `service.yaml` manifests were parameterized to accept dynamic values for image tags, replica counts, ports, and environment variables, ensuring modularity and adherence to DRY (Don't Repeat Yourself) principles.
+
+    root@PC:~/k8s/microservices# helm create microservice
+    
+    root@PC:~/k8s/microservices/helmchart/microservice/templates# cat deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: {{ .Values.appName }}
+    spec:
+      replicas: {{ .Values.appReplicas }}
+      selector:
+        matchLabels:
+          app: {{ .Values.appName }}
+      template:
+        metadata:
+          labels:
+            app: {{ .Values.appName }}
+        spec:
+          containers:
+          - name: {{ .Values.appName }}
+            image: "{{ .Values.appImage }}:{{ .Values.appVersion }}"
+            ports:
+            - containerPort: {{ .Values.containerPort }}
+            env:
+            {{- range .Values.containerEnvVars }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            
+    root@PC:~/k8s/microservices/helmchart/microservice/templates# cat service.yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: {{ .Values.appName }}
+    spec:
+      type: {{ .Values.serviceType }}
+      selector:
+        app: {{ .Values.appName }}
+      ports:
+      - protocol: TCP
+        port: {{ .Values.servicePort }}
+        targetPort: {{ .Values.containerPort }}
+
+#### Created values.yaml files for each microservice
+Abstracted application-specific configurations into dedicated `values.yaml` files for each microservice (e.g., `email-service-values.yaml`, `recommendation-service-values.yaml`, `frontend-values.yaml`). Demonstrated successful deployment and lifecycle management of these services into the local Minikube cluster utilizing the generic base chart combined with specific value overrides.
+
+    root@PC:~/k8s/microservices# cat email-service-values.yaml
+    appName: emailservice
+    appImage: gcr.io/google-samples/microservices-demo/emailservice
+    appVersion: v0.8.0
+    appReplicas: 2
+    containerPort: 8080
+    containerEnvVars:
+    - name: PORT
+      value: "8080"
+    
+    servicePort: 5000
+    
+    root@PC:~/k8s/microservices# helm install -f email-service-values.yaml emailservice microservice
+    NAME: emailservice
+    LAST DEPLOYED: Fri Aug 21 15:13:00 2026
+    NAMESPACE: default
+    STATUS: deployed
+    REVISION: 1
+    
+    root@PC:~/k8s/microservices# helm install -f values/recommendation-service-values.yaml recommendationservice microservice
+    NAME: recommendationservice
+    LAST DEPLOYED: Fri Aug 21 15:32:00 2026
+    NAMESPACE: default
+    STATUS: deployed
+    REVISION: 1
+    
+    root@PC:~/k8s/microservices# kubectl get pod
+    NAME                                     READY   STATUS              RESTARTS      AGE
+    emailservice-778b6cfbdd-27j5g            1/1     Running             0             19m
+    emailservice-778b6cfbdd-9s5xg            1/1     Running             0             19m
+    recommendationservice-5f556544d5-5zqbj   1/1     Running             0             11s
+    recommendationservice-5f556544d5-wf7f4   0/1     ContainerCreating   0             12s
+
+#### Created “redis” Helm Chart and values file for it
+Provisioned a distinct, specialized Helm chart to handle the stateful nature of the Redis caching tier. Configured the templates to include critical reliability mechanisms such as TCP socket-based `livenessProbe` and `readinessProbe`, strict CPU/Memory resource constraints, and `emptyDir` volume mounts. Validated the structural integrity of the chart via templating and dry-run execution prior to active deployment.
+
+    root@PC:~/k8s/microservices/charts# helm create redis
+    
+    root@PC:~/k8s/microservices# helm template -f values/redis-values.yaml charts/redis
+    ---
+    # Source: redis/templates/deployment.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: redis-cart
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: redis-cart
+      template:
+        metadata:
+          labels:
+            app: redis-cart
+        spec:
+          containers:
+          - name: redis-cart
+            image: "redis:alpine"
+            ports:
+            - containerPort: 6379
+            livenessProbe:
+              initialDelaySeconds: 5
+              tcpSocket:
+                port: 6379
+              periodSeconds: 5
+            readinessProbe:
+              initialDelaySeconds: 5
+              tcpSocket:
+                port: 6379
+              periodSeconds: 5
+            resources:
+              requests:
+                cpu: 70m
+                memory: 200Mi
+              limits:
+                cpu: 125m
+                memory: 300Mi
+            volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          volumes:
+          - name: redis-data
+            emptyDir: {}
+            
+    root@PC:~/k8s/microservices# helm install --dry-run -f values/redis-values.yaml rediscart charts/redis
+    NAME: rediscart
+    LAST DEPLOYED: Fri Aug 21 15:48:51 2026
+    NAMESPACE: default
+    STATUS: pending-install
+    REVISION: 1
+    DESCRIPTION: Dry run complete
+
+
  
 </details>
 
