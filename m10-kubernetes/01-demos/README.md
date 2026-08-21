@@ -1803,7 +1803,162 @@ Provisioned a distinct, specialized Helm chart to handle the stateful nature of 
 <summary>Demo project: Deploy Microservices with Helmfile</summary>
  <br />
  
- **content will be here**
+### Helm and Helmfile: Declarative Microservices Orchestration
+
+#### Deployed Microservices Application with "helm install"
+Automated the manual deployment process by scripting multiple imperative `helm install` commands. Engineered an `install.sh` bash script to sequentially deploy all microservices using their respective customized `values.yaml` files. Subsequently, developed an `uninstall.sh` script to efficiently teardown the active releases, ensuring a clean cluster state prior to transitioning to a declarative management approach.
+
+    root@PC:~/k8s/microservices# cat install.sh
+    helm install -f values/redis-values.yaml rediscart charts/redis
+    
+    helm install -f values/email-service-values.yaml emailservice charts/microservice
+    helm install -f values/cart-service-values.yaml cartservice charts/microservice
+    helm install -f values/currency-service-values.yaml currencyservice charts/microservice
+    helm install -f values/payment-service-values.yaml paymentservice charts/microservice
+    helm install -f values/recommendation-service-values.yaml recommendationservice charts/microservice
+    helm install -f values/productcatalog-service-values.yaml productcatalogservice charts/microservice
+    helm install -f values/shipping-service-values.yaml shippingservice charts/microservice
+    helm install -f values/ad-service-values.yaml adservice charts/microservice
+    helm install -f values/checkout-service-values.yaml checkoutservice charts/microservice
+    helm install -f values/frontend-values.yaml frontendservice charts/microservice
+    
+    root@PC:~/k8s/microservices# chmod u+x install.sh
+    root@PC:~/k8s/microservices# ./install.sh
+    NAME: rediscart
+    LAST DEPLOYED: Fri Aug 21 15:57:39 2026
+    NAMESPACE: default
+    STATUS: deployed
+    REVISION: 1
+    DESCRIPTION: Install complete
+    ...
+    NAME: frontendservice
+    LAST DEPLOYED: Fri Aug 21 15:57:42 2026
+    NAMESPACE: default
+    STATUS: deployed
+    REVISION: 1
+    
+    root@PC:~/k8s/microservices# ./uninstall.sh
+    release "rediscart" uninstalled
+    release "emailservice" uninstalled
+    ...
+    release "frontendservice" uninstalled
+
+#### Installed Helmfile
+Provisioned the `helmfile` binary to transition from imperative bash scripts to a fully declarative Helm release management system. Retrieved the specific compiled Linux release from the official repository, extracted the archive, granted executable permissions, and integrated it into the global system path for seamless execution.
+
+    root@PC:~/k8s/microservices# wget https://github.com/helmfile/helmfile/releases/download/v0.164.0/helmfile_0.164.0_linux_amd64.tar.gz
+    
+    root@PC:~/k8s/microservices# tar -zxvf helmfile_0.164.0_linux_amd64.tar.gz
+    LICENSE
+    README-zh_CN.md
+    README.md
+    helmfile
+    
+    root@PC:~/k8s/microservices# chmod +x helmfile
+    root@PC:~/k8s/microservices# mv helmfile /usr/local/bin/
+    
+    root@PC:~/k8s/microservices# helmfile --version
+    helmfile version 0.164.0
+
+#### Created Helmfile
+Architected a declarative `helmfile.yaml` state file to centrally manage the entire microservices ecosystem. Configured individual release blocks specifying the release name, target chart directory, and specific value overrides, effectively replacing the imperative bash scripts with a single source of truth for the cluster's desired state.
+
+    root@PC:~/k8s/microservices# cat helmfile.yaml
+    releases:
+      - name: rediscart
+        chart: charts/redis
+        values:
+          - values/redis-values.yaml
+          - appReplicas: "1"
+          - volumeName: "redis-cart-data"
+    
+      - name: emailservice
+        chart: charts/microservice
+        values:
+          - values/email-service-values.yaml
+    
+      - name: cartservice
+        chart: charts/microservice
+        values:
+          - values/cart-service-values.yaml
+    
+      - name: currencyservice
+        chart: charts/microservice
+        values:
+          - values/currency-service-values.yaml
+    
+      - name: paymentservice
+        chart: charts/microservice
+        values:
+          - values/payment-service-values.yaml
+    
+      - name: recommendationservice
+        chart: charts/microservice
+        values:
+          - values/recommendation-service-values.yaml
+    
+      - name: productcatalogservice
+        chart: charts/microservice
+        values:
+          - values/productcatalog-service-values.yaml
+    
+      - name: shippingservice
+        chart: charts/microservice
+        values:
+          - values/shipping-service-values.yaml
+    
+      - name: adservice
+        chart: charts/microservice
+        values:
+          - values/ad-service-values.yaml
+    
+      - name: checkoutservice
+        chart: charts/microservice
+        values:
+          - values/checkout-service-values.yaml
+    
+      - name: frontendservice
+        chart: charts/microservice
+        values:
+          - values/frontend-values.yaml
+
+#### Deployed Helm Charts with Helmfile
+Executed the deployment orchestration utilizing Helmfile to synchronize the cluster with the defined state. Demonstrated successful parallel resolution and deployment of all defined releases. Verified the active state through internal Helmfile list commands and Kubernetes pod validations. Finalized the demonstration by executing a complete, automated teardown of the environment using the destroy command.
+
+    root@PC:~/k8s/microservices# helmfile sync
+    Building dependency release=rediscart, chart=charts/redis
+    Building dependency release=cartservice, chart=charts/microservice
+    ...
+    UPDATED RELEASES:
+    NAME                    NAMESPACE   CHART                 VERSION   DURATION
+    checkoutservice                     charts/microservice   0.1.0     2s
+    recommendationservice               charts/microservice   0.1.0     2s
+    ...
+    
+    root@PC:~/k8s/microservices# helmfile list
+    NAME                    NAMESPACE       ENABLED INSTALLED       LABELS  CHART                   VERSION
+    rediscart                               true    true                    charts/redis
+    emailservice                            true    true                    charts/microservice
+    ...
+    
+    root@PC:~/k8s/microservices# kubectl get pod
+    NAME                                     READY   STATUS    RESTARTS   AGE
+    adservice-5f8b8889c9-jzgmv               1/1     Running   0          46s
+    cartservice-548cc667f7-8tfrw             1/1     Running   0          47s
+    ...
+    
+    root@PC:~/k8s/microservices# helmfile destroy
+    Building dependency release=frontendservice, chart=charts/microservice
+    ...
+    Deleting frontendservice
+    Deleting checkoutservice
+    ...
+    DELETED RELEASES:
+    NAME                    NAMESPACE   DURATION
+    recommendationservice               0s
+    cartservice                         0s
+    ...
+
  
 </details>
 
