@@ -402,6 +402,70 @@ Now your application setup is running in the cluster, but you still need a prope
 
 ↳ **Execution:**
 
+```bash
+
+root@PC:~/k8s-exercises# helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+NAME: ingress-nginx
+LAST DEPLOYED: Sat Aug 22 18:17:07 2026
+NAMESPACE: ingress-nginx
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+The ingress-nginx controller has been installed.
+It may take a few minutes for the load balancer IP to be available.
+You can watch the status by running 'kubectl get service --namespace ingress-nginx ingress-nginx-controller --output wide --watch'
+
+An example Ingress that makes use of the controller:
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: example
+    namespace: foo
+  spec:
+    ingressClassName: nginx
+    rules:
+      - host: www.example.com
+        http:
+          paths:
+            - pathType: Prefix
+              backend:
+                service:
+                  name: exampleService
+                  port:
+                    number: 80
+              path: /
+    # This section is only required if TLS is to be enabled for the Ingress
+    tls:
+      - hosts:
+        - www.example.com
+        secretName: example-tls
+
+If TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:
+
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: example-tls
+    namespace: foo
+  data:
+    tls.crt: <base64 encoded cert>
+    tls.key: <base64 encoded key>
+  type: kubernetes.io/tls
+root@PC:~/k8s-exercises# kubectl get pod
+NAME                                   READY   STATUS    RESTARTS   AGE
+java-app-deployment-546fbb8576-bn7d9   1/1     Running   0          27m
+java-app-deployment-546fbb8576-pd7x6   1/1     Running   0          27m
+java-app-deployment-546fbb8576-q2x9g   1/1     Running   0          27m
+mysql-primary-0                        1/1     Running   0          3h8m
+mysql-secondary-0                      1/1     Running   0          3h8m
+phpmyadmin-79b7496b87-5s99p            1/1     Running   0          10m
+root@PC:~/k8s-exercises# kubectl get pod -n ingress-nginx
+NAME                                        READY   STATUS    RESTARTS   AGE
+ingress-nginx-controller-5cd9869bf8-xrdjr   1/1     Running   0          43s
+
+
+```
 
 </details>
 
