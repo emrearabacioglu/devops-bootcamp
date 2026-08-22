@@ -483,6 +483,51 @@ ingress-nginx-controller-5cd9869bf8-xrdjr   1/1     Running   0          43s
 
 ↳ **Execution:**
 
+```bash
+root@PC:~/k8s-exercises# cat java-app-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: java-app-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: java-app-service
+            port:
+              number: 8080root@PC:~/k8s-exercises#
+root@PC:~/k8s-exercises# kubectl get ingress
+NAME           CLASS   HOSTS   ADDRESS         PORTS   AGE
+main-ingress   nginx   *       172.104.146.8   80      25m
+root@PC:~/k8s-exercises# kubectl describe ingress java-app-ingress
+Error from server (NotFound): ingresses.networking.k8s.io "java-app-ingress" not found
+root@PC:~/k8s-exercises# kubectl describe ingress main-ingress
+Name:             main-ingress
+Labels:           <none>
+Namespace:        default
+Address:          172.104.146.8
+Ingress Class:    nginx
+Default backend:  <default>
+Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *
+              /             java-app-service:8080 (10.2.1.10:8080,10.2.0.139:8080,10.2.0.13:8080)
+              /phpmyadmin   phpmyadmin-service:8081 (10.2.1.7:80)
+Annotations:  <none>
+Events:
+  Type    Reason  Age                From                      Message
+  ----    ------  ----               ----                      -------
+  Normal  Sync    21m (x3 over 25m)  nginx-ingress-controller  Scheduled for sync
+root@PC:~/k8s-exercises#
+
+```
+<img width="1532" height="1258" alt="image" src="https://github.com/user-attachments/assets/4a744440-c233-4718-a531-93994b424b91" />
 
 </details>
 
@@ -500,6 +545,18 @@ ingress-nginx-controller-5cd9869bf8-xrdjr   1/1     Running   0          43s
 
 ↳ **Execution:**
 
+```bash
+root@PC:~/k8s-exercises# kubectl port-forward svc/phpmyadmin-service 8081:8081
+Forwarding from 127.0.0.1:8081 -> 80
+Forwarding from [::1]:8081 -> 80
+Handling connection for 8081
+Handling connection for 8081
+Handling connection for 8081
+Handling connection for 8081
+Handling connection for 8081
+
+```
+<img width="2987" height="1589" alt="image" src="https://github.com/user-attachments/assets/4a05b91c-eaba-430e-9e35-3b17ba7fcb67" />
 
 </details>
 
