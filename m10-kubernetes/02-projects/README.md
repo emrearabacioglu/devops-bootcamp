@@ -299,6 +299,89 @@ root@PC:~/k8s-exercises# kubectl logs -l app=java-app --tail=15
 For this deployment you just need 1 replica, since this is only for your own use, so it doesn't have to be Highly Available. A simple deployment.yaml file and internal service will be enough.
 ↳ **Execution:**
 
+```bash
+
+root@PC:~/k8s-exercises# ll
+total 32
+drwxr-xr-x  3 root root 4096 Aug 22 17:19 ./
+drwx------ 15 root root 4096 Aug 22 14:38 ../
+-rw-r--r--  1 root root  100 Aug 22 17:01 db-config.yaml
+-rw-r--r--  1 root root  245 Aug 22 17:50 db-secret.yaml
+-rw-r--r--  1 root root 1146 Aug 22 17:19 java-app.yaml
+drwxr-xr-x  6 root root 4096 Aug 22 16:19 kubernetes-exercises/
+-r--------  1 root root 2825 Aug 22 14:55 my-app-kubeconfig.yaml
+-rw-r--r--  1 root root  182 Aug 22 15:08 mysql-values.yaml
+root@PC:~/k8s-exercises# nano phpmyadmin.yaml
+root@PC:~/k8s-exercises# kubectl apply -f phpmyadmin.yaml
+deployment.apps/phpmyadmin created
+service/phpmyadmin-service created
+root@PC:~/k8s-exercises# kubectl get pod
+NAME                                   READY   STATUS              RESTARTS   AGE
+java-app-deployment-546fbb8576-bn7d9   1/1     Running             0          16m
+java-app-deployment-546fbb8576-pd7x6   1/1     Running             0          16m
+java-app-deployment-546fbb8576-q2x9g   1/1     Running             0          16m
+mysql-primary-0                        1/1     Running             0          177m
+mysql-secondary-0                      1/1     Running             0          177m
+phpmyadmin-79b7496b87-5s99p            0/1     ContainerCreating   0          11s
+root@PC:~/k8s-exercises# kubectl get pod
+NAME                                   READY   STATUS    RESTARTS   AGE
+java-app-deployment-546fbb8576-bn7d9   1/1     Running   0          16m
+java-app-deployment-546fbb8576-pd7x6   1/1     Running   0          16m
+java-app-deployment-546fbb8576-q2x9g   1/1     Running   0          16m
+mysql-primary-0                        1/1     Running   0          177m
+mysql-secondary-0                      1/1     Running   0          177m
+phpmyadmin-79b7496b87-5s99p            1/1     Running   0          16s
+root@PC:~/k8s-exercises# cat phpmyadmin.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin
+  labels:
+    app: phpmyadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+        - name: phpmyadmin
+          image: phpmyadmin/phpmyadmin:5
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          env:
+            - name: PMA_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: db_server
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: db_root_pwd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin-service
+spec:
+  selector:
+    app: phpmyadmin
+  ports:
+  - protocol: TCP
+    port: 8081
+    targetPort: 80
+root@PC:~/k8s-exercises#
+
+
+```
 
 </details>
 
