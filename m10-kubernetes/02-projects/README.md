@@ -572,20 +572,395 @@ Handling connection for 8081
  
 * All config files: service, deployment, ingress, configMap, secret, will be part of the chart
 
-↳ **Execution:**
-
 * Create custom values file as an example for developers to use when deploying the application
 
 ↳ **Execution:**
+```bash
+root@PC:~/k8s-exercises# helm create java-app-chart
+Creating java-app-chart
+root@PC:~/k8s-exercises# ll
+total 44
+drwxr-xr-x  4 root root 4096 Aug 23 15:47 ./
+drwx------ 15 root root 4096 Aug 22 14:38 ../
+-rw-r--r--  1 root root  100 Aug 22 17:01 db-config.yaml
+-rw-r--r--  1 root root  245 Aug 22 17:50 db-secret.yaml
+drwxr-xr-x  4 root root 4096 Aug 23 15:47 java-app-chart/
+-rw-r--r--  1 root root  302 Aug 22 19:02 java-app-ingress.yaml
+-rw-r--r--  1 root root 1146 Aug 22 17:19 java-app.yaml
+drwxr-xr-x  6 root root 4096 Aug 22 19:11 kubernetes-exercises/
+-r--------  1 root root 2825 Aug 22 14:55 my-app-kubeconfig.yaml
+-rw-r--r--  1 root root  182 Aug 22 15:08 mysql-values.yaml
+-rw-r--r--  1 root root  909 Aug 22 18:07 phpmyadmin.yaml
+root@PC:~/k8s-exercises# rm -rf java-app-chart/templates/*
+root@PC:~/k8s-exercises# cp db-config.yaml db-secret.yaml java-app-ingress.yaml java-app.yaml java-app-chart/templates/
+root@PC:~/k8s-exercises# cd java-app-chart/templates/
+root@PC:~/k8s-exercises/java-app-chart/templates# ll
+total 24
+drwxr-xr-x 2 root root 4096 Aug 23 15:50 ./
+drwxr-xr-x 4 root root 4096 Aug 23 15:47 ../
+-rw-r--r-- 1 root root  100 Aug 23 15:50 db-config.yaml
+-rw-r--r-- 1 root root  245 Aug 23 15:50 db-secret.yaml
+-rw-r--r-- 1 root root  302 Aug 23 15:50 java-app-ingress.yaml
+-rw-r--r-- 1 root root 1146 Aug 23 15:50 java-app.yaml
+root@PC:~/k8s-exercises/java-app-chart/templates# cd ..
+root@PC:~/k8s-exercises/java-app-chart# > values.yaml
+root@PC:~/k8s-exercises/java-app-chart# cat values.yaml
+appName: java-app
+appReplicas: 1
+registrySecret: my-registry-key
+appContainerName: javamysqlapp
+appImage: emrearabacioglu/java-app
+appVersion: "v3"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData: {}
+
+secretName: db-secret
+secretData: {}
+
+regularData: {}
+
+ingress:
+  hostName: ""
+  pathType: Prefix
+  path: /root@PC:~/k8s-exercises/java-app-chart# cat values-override.yaml
+appName: java-app
+appReplicas: 3
+registrySecret: my-registry-key
+appContainerName: javamysqlapp
+appImage: emrearabacioglu/java-app
+appVersion: "v3"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData:
+  DB_SERVER: mysql-primary
+
+secretName: db-secret
+secretData:
+  DB_USER: root
+  DB_PWD: "XzGu3Cxfcn"
+  DB_NAME: "my-app-db"
+  MYSQL_ROOT_PASSWORD: "XzGu3Cxfcn"
+
+regularData: {}
+
+ingress:
+  hostName: ""
+  pathType: Prefix
+  path: /root@PC:~/k8s-exercises/java-app-chart# cd templates/
+root@PC:~/k8s-exercises/java-app-chart/templates# cat *
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configName }}
+data:
+  {{- range $key, $value := .Values.configData }}
+  {{ $key }}: {{ $value }}
+  {{- end }}apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.secretName }}
+type: Opaque
+data:
+  {{- range $key, $value := .Values.secretData }}
+  {{ $key }}: {{ $value | b64enc }}
+  {{- end }}apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.appName }}-deployment
+  labels:
+    app: {{ .Values.appName }}
+spec:
+  replicas: {{ .Values.appReplicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.appName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.appName }}
+    spec:
+      imagePullSecrets:
+      - name: {{ .Values.registrySecret }}
+      containers:
+      - name: {{ .Values.appContainerName }}
+        image: "{{ .Values.appImage }}:{{ .Values.appVersion }}"
+        ports:
+        - containerPort: {{ .Values.containerPort }}
+        env:
+        {{- range $key, $value := .Values.secretData }}
+         - name: {{ $key }}
+           valueFrom:
+             secretKeyRef:
+               name: {{ $.Values.secretName }}
+               key: {{ $key }}
+        {{- end }}
+        {{- range $key, $value := .Values.configData }}
+         - name: {{ $key }}
+           valueFrom:
+             configMapKeyRef:
+               name: {{ $.Values.configName }}
+               key: {{ $key }}
+        {{- end }}
+        {{- range $key, $value := .Values.regularData }}
+         - name: {{ $key }}
+           value: {{ $value | quote }}
+        {{- end }}apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.appName }}-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  {{- if .Values.ingress.hostName }}
+  - host: {{ .Values.ingress.hostName | quote }}
+    http:
+  {{- else }}
+  - http:
+  {{- end }}
+      paths:
+      - path: {{ .Values.ingress.path }}
+        pathType: {{ .Values.ingress.pathType }}
+        backend:
+          service:
+            name: {{ .Values.appName }}-service
+            port:
+              number: {{ .Values.servicePort }}apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.appName }}-service
+spec:
+  selector:
+    app: {{ .Values.appName }}
+  ports:
+  - protocol: TCP
+    port: {{ .Values.servicePort }}
+    targetPort: {{ .Values.containerPort }}root@PC:~/k8s-exercises/java-app-chart/templates# cd ..
+
+```
 
 * Deploy the java application using the chart with helmfile
 
 ↳ **Execution:**
+```bash
+root@PC:~/k8s-exercises/java-app-chart# cd ..root@PC:~/k8s-exercises# kubectl delete secret/db-secret configmap/db-config deployment/java-app-deployment service/java-app-service ingress/java-app-ingress
+secret "db-secret" deleted from default namespace
+configmap "db-config" deleted from default namespace
+deployment.apps "java-app-deployment" deleted from default namespace
+service "java-app-service" deleted from default namespace
+Error from server (NotFound): ingresses.networking.k8s.io "java-app-ingress" not found
+root@PC:~/k8s-exercises# helm upgrade --install java-app-release ./java-app-chart -f ./java-app-chart/values-override.yaml --dry-run
+Release "java-app-release" does not exist. Installing it now.
+NAME: java-app-release
+LAST DEPLOYED: Sun Aug 23 18:39:36 2026
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: java-app-chart/templates/db-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+type: Opaque
+data:
+  DB_NAME: bXktYXBwLWRi
+  DB_PWD: WHpHdTNDeGZjbg==
+  DB_USER: cm9vdA==
+  MYSQL_ROOT_PASSWORD: WHpHdTNDeGZjbg==
+---
+# Source: java-app-chart/templates/db-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+data:
+  DB_SERVER: mysql-primary
+---
+# Source: java-app-chart/templates/java-app-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-app-service
+spec:
+  selector:
+    app: java-app
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+---
+# Source: java-app-chart/templates/java-app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-app-deployment
+  labels:
+    app: java-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: java-app
+  template:
+    metadata:
+      labels:
+        app: java-app
+    spec:
+      imagePullSecrets:
+      - name: my-registry-key
+      containers:
+      - name: javamysqlapp
+        image: "emrearabacioglu/java-app:v3"
+        ports:
+        - containerPort: 8080
+        env:
+         - name: DB_NAME
+           valueFrom:
+             secretKeyRef:
+               name: db-secret
+               key: DB_NAME
+         - name: DB_PWD
+           valueFrom:
+             secretKeyRef:
+               name: db-secret
+               key: DB_PWD
+         - name: DB_USER
+           valueFrom:
+             secretKeyRef:
+               name: db-secret
+               key: DB_USER
+         - name: MYSQL_ROOT_PASSWORD
+           valueFrom:
+             secretKeyRef:
+               name: db-secret
+               key: MYSQL_ROOT_PASSWORD
+         - name: DB_SERVER
+           valueFrom:
+             configMapKeyRef:
+               name: db-config
+               key: DB_SERVER
+---
+# Source: java-app-chart/templates/java-app-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: java-app-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: java-app-service
+            port:
+              number: 8080
+
+root@PC:~/k8s-exercises# helm upgrade --install java-app-release ./java-app-chart -f ./java-app-chart/values-override.yaml
+Release "java-app-release" has been upgraded. Happy Helming!
+NAME: java-app-release
+LAST DEPLOYED: Sun Aug 23 18:41:32 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 2
+TEST SUITE: None
+root@PC:~/k8s-exercises# kubectl get pods
+NAME                                   READY   STATUS    RESTARTS   AGE
+java-app-deployment-54bb677894-h7h7l   1/1     Running   0          91s
+java-app-deployment-54bb677894-rz974   1/1     Running   0          91s
+java-app-deployment-54bb677894-wnf76   1/1     Running   0          91s
+mysql-primary-0                        1/1     Running   0          27h
+mysql-secondary-0                      1/1     Running   0          27h
+phpmyadmin-79b7496b87-5s99p            1/1     Running   0          24h
+root@PC:~/k8s-exercises# kubectl get ingress
+NAME               CLASS   HOSTS   ADDRESS   PORTS   AGE
+java-app-ingress   nginx   *                 80      33s
+root@PC:~/k8s-exercises# kubectl get ingress
+NAME               CLASS   HOSTS   ADDRESS         PORTS   AGE
+java-app-ingress   nginx   *       172.104.146.8   80      101s
+
+```
+<img width="1292" height="708" alt="image" src="https://github.com/user-attachments/assets/34c5b970-601c-4940-a153-7eaf491a2bff" />
 
 * Host the chart in its own git repository
 
 ↳ **Execution:**
 
+```bash
+root@PC:~/k8s-exercises/java-app-chart# git init
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint:   git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint:   git branch -m <name>
+Initialized empty Git repository in /root/k8s-exercises/java-app-chart/.git/
+root@PC:~/k8s-exercises/java-app-chart# git branch -M main
+root@PC:~/k8s-exercises/java-app-chart# git remote add origin https://github.com/emrearabacioglu/java-app-chart.git
+root@PC:~/k8s-exercises/java-app-chart# helm package .
+Successfully packaged chart and saved it to: /root/k8s-exercises/java-app-chart/java-app-chart-0.1.0.tgz
+root@PC:~/k8s-exercises/java-app-chart# helm repo index . --url https://emrearabacioglu.github.io/java-app-chart/
+root@PC:~/k8s-exercises/java-app-chart# git add .
+root@PC:~/k8s-exercises/java-app-chart# git commit -m "Helm chart"
+[main (root-commit) d807711] Helm chart
+ Committer: root <root@PC.localdomain>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 11 files changed, 201 insertions(+)
+ create mode 100644 .helmignore
+ create mode 100644 Chart.yaml
+ create mode 100644 index.yaml
+ create mode 100644 java-app-chart-0.1.0.tgz
+ create mode 100644 templates/db-config.yaml
+ create mode 100644 templates/db-secret.yaml
+ create mode 100644 templates/java-app-deployment.yaml
+ create mode 100644 templates/java-app-ingress.yaml
+ create mode 100644 templates/java-app-service.yaml
+ create mode 100644 values-override.yaml
+ create mode 100644 values.yaml
+
+root@PC:~/k8s-exercises/java-app-chart# git push -u origin main
+Username for 'https://github.com': emrearabacioglu
+Password for 'https://emrearabacioglu@github.com':
+Enumerating objects: 14, done.
+Counting objects: 100% (14/14), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (14/14), done.
+Writing objects: 100% (14/14), 4.44 KiB | 4.44 MiB/s, done.
+Total 14 (delta 1), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (1/1), done.
+To https://github.com/emrearabacioglu/java-app-chart.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'.
+root@PC:~/k8s-exercises/java-app-chart#
+```
+<img width="2073" height="1326" alt="image" src="https://github.com/user-attachments/assets/ef7ecfaa-89ae-4279-bfe9-ae59be308252" />
 
 </details>
 
