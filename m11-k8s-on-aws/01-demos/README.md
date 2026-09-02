@@ -302,7 +302,110 @@ Initiated deployment scale-down and validated the Cordon/Drain operations as nod
 <summary>Create EKS cluster with Fargate</summary>
  <br />
  
- **content will be here**
+ ### AWS EKS with Fargate Integration
+
+#### Fargate IAM Role and Profile Provisioning
+Configured the serverless compute engine for the EKS cluster by provisioning AWS Fargate. 
+*   Created a dedicated Amazon EKS Pod Execution Role to grant Fargate infrastructure the required permissions to pull container images and execute pods securely.
+<img width="1692" height="821" alt="image" src="https://github.com/user-attachments/assets/2c5a62b3-6016-4b60-b461-0c6c15329371" />
+<img width="1674" height="813" alt="image" src="https://github.com/user-attachments/assets/d1fa5fd5-bbb3-4f78-996b-9f05966eee81" />
+<img width="1674" height="813" alt="image" src="https://github.com/user-attachments/assets/9c97736e-5c02-4c43-983c-7a0834ccfff0" />
+
+  
+*   Established a Fargate Profile bound to the `dev` namespace, utilizing the `profile: fargate` selector to automatically route matching workloads to serverless nodes instead of the standard EC2 Node Group.
+<img width="1694" height="801" alt="image" src="https://github.com/user-attachments/assets/38ddab5a-aeb3-4bc5-8afc-428a04e9ebfd" />
+<img width="1708" height="689" alt="image" src="https://github.com/user-attachments/assets/720afcfd-4bd0-47df-b8e2-e709c85882d6" />
+<img width="1706" height="601" alt="image" src="https://github.com/user-attachments/assets/f5ad4eee-d27e-4bd2-93a2-eeab50e0c77e" />
+<img width="1690" height="799" alt="image" src="https://github.com/user-attachments/assets/8e65ff03-f43f-4dbb-b6b7-61c7573798ea" />
+
+
+
+#### Application Deployment via AWS Fargate
+Demonstrated serverless pod execution by deploying an Nginx application explicitly targeted at the newly created Fargate profile. Verified the manifest configuration specifying the exact namespace and matching labels.
+```bash
+    root@PC:~/k8s-on-aws# cat nginx-config.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+      namespace: dev
+      labels:
+        app: nginx
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: nginx
+          profile: fargate
+    template:
+      metadata:
+        labels:
+          app: nginx
+          profile: fargate
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          ports:
+          - containerPort: 80
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 80
+      selector:
+        app: nginx
+      type: LoadBalancer
+```
+Prepared the cluster environment by establishing the designated logical partition (`dev`) and executing the deployment.
+```bash
+    root@PC:~/k8s-on-aws# kubectl get ns
+    NAME              STATUS   AGE
+    default           Active   21h
+    external-dns      Active   21h
+    kube-node-lease   Active   21h
+    kube-public       Active   21h
+    kube-system       Active   21h
+    
+    root@PC:~/k8s-on-aws# kubectl create ns dev
+    namespace/dev created
+    
+    root@PC:~/k8s-on-aws# kubectl apply -f nginx-config.yaml
+    deployment.apps/nginx created
+    service/nginx unchanged
+```
+Monitored the Fargate dynamic provisioning process in real-time. The pods initially entered a `Pending` state while AWS spun up isolated serverless compute environments on-demand, successfully transitioning to `Running` once the backend nodes initialized.
+```bash
+    root@PC:~/k8s-on-aws# kubectl get pods -n dev -w
+    NAME                    READY   STATUS    RESTARTS   AGE
+    nginx-fd684dfd4-p8jpq   0/1     Pending   0          33s
+    nginx-fd684dfd4-vs9zt   0/1     Pending   0          33s
+    nginx-fd684dfd4-vs9zt   0/1     Pending   0          51s
+    nginx-fd684dfd4-vs9zt   0/1     ContainerCreating   0          52s
+    nginx-fd684dfd4-vs9zt   0/1     ContainerCreating   0          52s
+    nginx-fd684dfd4-vs9zt   1/1     Running             0          58s
+    nginx-fd684dfd4-p8jpq   0/1     Pending             0          59s
+    nginx-fd684dfd4-p8jpq   0/1     ContainerCreating   0          59s
+    nginx-fd684dfd4-p8jpq   0/1     ContainerCreating   0          60s
+    nginx-fd684dfd4-p8jpq   1/1     Running             0          66s
+```
+Validated the cluster's underlying infrastructure scaling to confirm the injection of the dynamic Fargate nodes, operating seamlessly alongside the pre-existing EC2 worker node.
+```bash
+    root@PC:~/k8s-on-aws# kubectl get nodes
+    NAME                                                      STATUS   ROLES    AGE     VERSION
+    fargate-ip-192-168-152-97.eu-central-1.compute.internal   Ready    <none>   6m48s   v1.36.2-eks-254016e
+    fargate-ip-192-168-165-70.eu-central-1.compute.internal   Ready    <none>   6m56s   v1.36.2-eks-254016e
+    ip-192-168-51-213.eu-central-1.compute.internal           Ready    <none>   5h47m   v1.36.3-eks-cb19647
+```
+
  
 </details>
 
