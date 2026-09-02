@@ -133,7 +133,165 @@ Verified that the provisioned EC2 instances successfully joined the EKS cluster 
 <summary>Create EKS cluster with Node Group - Part 2 (Autoscaling)</summary>
  <br />
  
- **content will be here**
+### EKS Auto-Scaling and Application Deployment
+
+#### AWS IAM and Auto-Scaling Policy Configuration
+Configured AWS Identity and Access Management (IAM) to authorize the Kubernetes Cluster Autoscaler to dynamically modify the Desired Capacity of the underlying Auto Scaling Group. 
+*   Created a custom IAM Policy with required `autoscaling` and `ec2` permissions.
+  <img width="1700" height="529" alt="image" src="https://github.com/user-attachments/assets/e298cd7d-c3b4-4d05-b945-ea585503b5f7" />
+  <img width="1682" height="833" alt="image" src="https://github.com/user-attachments/assets/7c28ac5b-58ba-4ccc-8921-5b99094c96ff" />
+  <img width="1692" height="759" alt="image" src="https://github.com/user-attachments/assets/5591dd32-f5ec-4314-8dbd-0a1ae241b6da" />
+
+*   Attached the new policy to the existing EKS Node Group Role.
+
+  <img width="1694" height="809" alt="image" src="https://github.com/user-attachments/assets/17fe26bd-78bc-4f1d-96c8-1f0e3d8d482c" />
+  <img width="1712" height="607" alt="image" src="https://github.com/user-attachments/assets/90c604a0-4882-4e26-93e9-56bcf45b1db9" />
+  <img width="1700" height="695" alt="image" src="https://github.com/user-attachments/assets/ee1f0128-b909-40ba-b6fb-b8e7e182af6d" />
+
+
+#### Cluster Autoscaler Deployment
+Prepared and deployed the Cluster Autoscaler component. Addressed a YAML syntax error in the annotations map, reapplied the manifest, and verified the pod's operational status.
+```bash
+    root@PC:~/k8s-on-aws# cat cluster-autoscaler-autodiscover.yaml
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        k8s-addon: cluster-autoscaler.addons.k8s.io
+        k8s-app: cluster-autoscaler
+      name: cluster-autoscaler
+      namespace: kube-system
+      annotations:
+        eks.amazonaws.com/role-arn:arn:aws:iam::731872836472:role/EKSServiceAccountRole
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: cluster-autoscaler
+      labels:
+        k8s-addon: cluster-autoscaler.addons.k8s.io
+        k8s-app: cluster-autoscaler
+    rules:
+      - apiGroups: [""]
+        resources: ["events", "endpoints"]
+        verbs: ["create", "patch"]
+    ... [Truncated for brevity] ...
+    
+    root@PC:~/k8s-on-aws# kubectl apply -f cluster-autoscaler-autodiscover.yaml
+    clusterrole.rbac.authorization.k8s.io/cluster-autoscaler created
+    ...
+    error: unable to decode "cluster-autoscaler-autodiscover.yaml": json: cannot unmarshal string into Go struct field ObjectMeta.metadata.annotations of type map[string]string
+    
+    root@PC:~/k8s-on-aws# kubectl apply -f cluster-autoscaler-autodiscover.yaml
+    serviceaccount/cluster-autoscaler created
+    clusterrole.rbac.authorization.k8s.io/cluster-autoscaler unchanged
+    role.rbac.authorization.k8s.io/cluster-autoscaler unchanged
+    clusterrolebinding.rbac.authorization.k8s.io/cluster-autoscaler unchanged
+    rolebinding.rbac.authorization.k8s.io/cluster-autoscaler unchanged
+    deployment.apps/cluster-autoscaler unchanged
+    
+    root@PC:~/k8s-on-aws# kubectl get pod -n kube-system
+    NAME                                 READY   STATUS    RESTARTS   AGE
+    aws-node-7qbqs                       2/2     Running   0          173m
+    cluster-autoscaler-fb4856648-qj8xr   1/1     Running   0          57s
+    coredns-c4b9957df-k7n97              1/1     Running   0          16h
+```
+#### Nginx Application & Service Provisioning
+Deployed an Nginx sample application and exposed it externally utilizing a Kubernetes `type: LoadBalancer` Service, seamlessly provisioning an AWS Classic/Network Load Balancer.
+```bash
+    root@PC:~/k8s-on-aws# cat nginx-config.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      selector:
+        matchLabels:
+          app: nginx
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+          - name: nginx
+            image: nginx
+            ports:
+            - containerPort: 80
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 80
+      selector:
+        app: nginx
+      type: LoadBalancer
+      
+    root@PC:~/k8s-on-aws# kubectl apply -f nginx-config.yaml
+    deployment.apps/nginx created
+    service/nginx created
+    
+    root@PC:~/k8s-on-aws# kubectl get svc
+    NAME         TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE
+    kubernetes   ClusterIP      10.100.0.1       <none>                                                                    443/TCP        19h
+    nginx        LoadBalancer   10.100.190.149   a4d6933ade5dd4ec39879d432e7de9d9-1736632215.eu-central-1.elb.amazonaws.com   80:30823/TCP   27s
+```
+<img width="1700" height="825" alt="image" src="https://github.com/user-attachments/assets/96cee4d3-9f84-416e-84a9-443603ec2e07" />
+<img width="1706" height="403" alt="image" src="https://github.com/user-attachments/assets/d5d499af-7cc2-41eb-9ec1-fd470b88a2d5" />
+
+
+#### Cluster Auto-Scaling Demonstration
+Demonstrated infrastructure elasticity by scaling the Nginx deployment up to 20 replicas. The Autoscaler accurately detected unschedulable pods due to resource exhaustion and dynamically expanded the Node Group capacity. Subsequent manual scale-down triggered safe node evictions (`SchedulingDisabled`) and termination.
+```bash
+    root@PC:~/k8s-on-aws# kubectl edit deployment nginx
+    deployment.apps/nginx edited
+    
+    root@PC:~/k8s-on-aws# kubectl get pod
+    NAME                     READY   STATUS    RESTARTS   AGE
+    nginx-5cf8dc6bc5-277m6   0/1     Pending   0          9s
+    nginx-5cf8dc6bc5-2h9bn   0/1     Pending   0          9s
+    nginx-5cf8dc6bc5-2wtmp   1/1     Running   0          21m
+    nginx-5cf8dc6bc5-56zbl   0/1     Pending   0          9s
+    ...
+```
+Verified the Cluster Autoscaler logs acknowledging the deficit and triggering scale-up routines:
+```bash
+    I0902 12:04:23.513273        1 static_autoscaler.go:569] Unschedulable pods are very new, waiting one iteration for more
+    I0902 12:04:34.098520        1 orchestrator.go:120] Upcoming 2 nodes
+    I0902 12:04:33.899713        1 executor.go:166] Scale-up: setting group eks-eks-node-group-bad02f24-c810-afdf-2bab-6e88222abb34 size to 3
+    I0902 12:04:34.087353        1 event_sink_logging_wrapper.go:48] Event(v1.ObjectReference{Kind:"Pod", Namespace:"default", Name:"nginx-5cf8dc6bc5-k9k52" ... reason: 'TriggeredScaleUp' pod triggered scale-up: [{eks-eks-node-group-bad02f24-c810-afdf-2bab-6e88222abb34 1->3 (max: 3)}]
+```
+Validated the successful initialization and registration of new EC2 Worker Nodes:
+```bash
+    root@PC:~/k8s-on-aws# kubectl get nodes
+    NAME                                               STATUS   ROLES    AGE     VERSION
+    ip-192-168-195-122.eu-central-1.compute.internal   Ready    <none>   2m26s   v1.36.3-eks-cb19647
+    ip-192-168-208-204.eu-central-1.compute.internal   Ready    <none>   2m22s   v1.36.3-eks-cb19647
+    ip-192-168-51-213.eu-central-1.compute.internal    Ready    <none>   3h46m   v1.36.3-eks-cb19647
+```
+Initiated deployment scale-down and validated the Cordon/Drain operations as nodes transitioned to `SchedulingDisabled` prior to permanent termination:
+```bash
+    root@PC:~/k8s-on-aws# kubectl get node
+    NAME                                               STATUS                     ROLES    AGE   VERSION
+    ip-192-168-195-122.eu-central-1.compute.internal   Ready,SchedulingDisabled   <none>   15m   v1.36.3-eks-cb19647
+    ip-192-168-208-204.eu-central-1.compute.internal   Ready,SchedulingDisabled   <none>   15m   v1.36.3-eks-cb19647
+    ip-192-168-51-213.eu-central-1.compute.internal    Ready                      <none>   4h    v1.36.3-eks-cb19647
+    
+    root@PC:~/k8s-on-aws# kubectl get node
+    NAME                                              STATUS   ROLES    AGE    VERSION
+    ip-192-168-51-213.eu-central-1.compute.internal   Ready    <none>   4h1m   v1.36.3-eks-cb19647
+```
+
  
 </details>
 
