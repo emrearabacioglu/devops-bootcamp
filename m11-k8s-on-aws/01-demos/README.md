@@ -510,7 +510,137 @@ Validated the CloudFormation stacks, newly provisioned VPC dependencies, active 
 <summary>Deploy to EKS cluster from Jenkins Pipeline</summary>
  <br />
  
- **content will be here**
+ ### Continuous Deployment Pipeline Setup for AWS EKS
+
+#### Provisioning CLI Tools in the Jenkins Environment
+Established an interactive, privileged shell session within the active Jenkins Docker container hosted on the DigitalOcean droplet. Downloaded, configured, and applied execution permissions to `kubectl` and `aws-iam-authenticator` binaries, placing them in the container's system path to enable direct communication with the Kubernetes control plane.
+
+```bash
+    root@PC:/mnt/c/Users/emrea# ssh root@164.90.179.224
+    ...
+    root@jenkins:~# docker ps
+    CONTAINER ID   IMAGE                 COMMAND                  CREATED        STATUS         PORTS                                                                                      NAMES
+    4b8376846d81   jenkins/jenkins:lts   "/usr/bin/tini -- /u…"   5 months ago   Up 4 minutes   0.0.0.0:8080->8080/tcp, [::]:8080->8080/tcp, 0.0.0.0:50000->50000/tcp, [::]:50000->50000/tcp   wizardly_johnson
+    
+    root@jenkins:~# docker exec -u 0 -it 4b8376846d81 bash
+    root@4b8376846d81:/# curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl; chmod +x ./kubectl; mv ./kubectl /usr/local/bin/kubectl
+    ...
+    root@4b8376846d81:/# kubectl version
+    Client Version: v1.31.0
+    ...
+    root@4b8376846d81:/# curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.6.11/aws-iam-authenticator_0.6.11_linux_amd64
+    ...
+    root@4b8376846d81:/# chmod +x ./aws-iam-authenticator
+    root@4b8376846d81:/# mv ./aws-iam-authenticator /usr/local/bin/
+```
+
+#### Kubernetes Authentication Configuration
+Generated the Kubernetes cluster configuration file containing the target EKS endpoint, certificate authority data, and AWS IAM authenticator execution arguments. Initialized the `.kube` directory within the Jenkins container's workspace (`/var/jenkins_home`) and securely transferred the configuration file from the host machine to authorize the Jenkins agent.
+```bash
+    root@jenkins:~# cat config
+    apiVersion: v1
+    kind: Config
+    clusters:
+    - cluster:
+        certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUREVENDQWZXZ0F3SUJBZ0lRT2JreFpuYUNkSDVubWR2bHVITlNlekFOQmdrcWhraUc5dzBCQVFzRkFEQVYKTVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1CNFhEVEkyTURrd016RXdNakl4TlZvWERUTXhNRGt3TWpFdwpNakl4TlZvd0ZURVRNQkVHQTFVRUF4TUthM1ZpWlhKdVpYUmxjekNDQVNJd0RRWUpLb1pJaHZjTkFRRUJCUUFECmdnRVBBRENDQVFvQ2dnRUJBTWRsVklDYnc3WXhtaDIyajl2QzdMNDFlUnlDRFF3K2xzM2FYNW9BaHBLa00xVjcKbjhKR0QzMDVIaVg4cHVBdnpRck9GYWZTcTByKzZIRUEvSjZWZkN2YW9aRVJOTnV3TCtYSDBYSEFhRTBWUFlkQQpUY3FOZTRJeE5obGdCcTZiSXlKZWFuV0VrWGgxRWM2MXFoSE1nMEIwbFBSQUQ1U2trZmFSbjJvME43OEFSYmQ3CnRkWk9tQmtETUtnaFRuQjl5RC9mMlg5RTY2Y0I0UzJDNUxKUTI1SkdXdXFIV0RWMWZEU3A4M3pGcDBsTGw2clkKSjdBMlpYaFBXclVoNDRScGFFWVlVaFZ1QUZsZldGaEJXRDlScVFaWUdTWjVObjRtQUw2SDVOOHhhRnZ1bk82aQp1RDRFS3VlRWNWRC8xVmFqd0hZbHNsVzRaT2p6K0FBR3I3eXpVemtDQXdFQUFhTlpNRmN3RGdZRFZSMFBBUUgvCkJBUURBZ0trTUE4R0ExVWRFd0VCL3dRRk1BTUJBZjh3SFFZRFZSME9CQllFRkZQaDBUQjdaVStBS01hZ0xXWU8KODYyRUJvd2dNQlVHQTFVZEVRUU9NQXlDQ210MVltVnlibVYwWlhNd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQgpBRjRqQVdEc1BhaWp0ZnNOL3IwaGFNMUlIbGpBbm1sVktRUWhlYlMzbU1rWTExL1ErNm8zNmEvMFlYR3E1RWpECnVFTnJJUFVWaTBmRTVWSVRUZFdQOUtuWXcxZm9QWlNubHZiaWd5SWxoc3ZSNEgwQ3BSSG5xaHk1bUJxSEt0WTkKTHhBekZWajkxZjRBRTlVam40cE9WYUx1MFBBSVpzcE9kMkxZTXRuRHJkYVdyZUVIYlhMUUZaeCtKTU5VcWRLTgppTmZrOWMzUHhxYTJsc2luOVIrL1Y0MW4reTdxUU55Z2NFc2ZpNStEUjhzRkhHcUErb0VKT25hU0xIKzJ2Uno2Ck1BaThIQUgvcjExd3cxK0JaVkdSNUY3bEJRd05yVTlPcWdwY0NHK0NqVGFKMG9jc1Z6WWdhSTIrQldQanBKN2QKZ0FMWTNZZDdvV0NBUlVmV0lvNlFGeHc9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+        server: https://5463C9E961ED09599F5BA27042808CF5.gr7.eu-central-1.eks.amazonaws.com
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: aws
+      name: aws
+    current-context: aws
+    users:
+    - name: aws
+      user:
+        exec:
+          apiVersion: client.authentication.k8s.io/v1beta1
+          command: /usr/local/bin/aws-iam-authenticator
+          args:
+            - "token"
+            - "-i"
+            - "demo-cluster"
+    
+    root@jenkins:~# docker exec -it 4b8376846d81 bash
+    jenkins@4b8376846d81:/$ cd ~
+    jenkins@4b8376846d81:~$ mkdir .kube
+    jenkins@4b8376846d81:~$ exit
+    
+    root@jenkins:~# docker cp config 4b8376846d81:/var/jenkins_home/.kube/
+    Successfully copied 3.58kB to 4b8376846d81:/var/jenkins_home/.kube/
+```
+
+#### Pipeline Definition and Credential Management
+Configured encrypted AWS IAM credentials within the Jenkins dashboard to securely supply dynamic variables to the pipeline. Developed a declarative `Jenkinsfile` orchestrating a multi-stage CI/CD workflow, utilizing the `withCredentials` directive to authorize cluster access and execute a deployment resource creation on EKS.
+
+<img width="1694" height="865" alt="image" src="https://github.com/user-attachments/assets/594b03d6-ad3c-47a5-818b-4a497dc7612b" />
+
+
+```
+    #!/usr/bin/env groovy
+    
+    pipeline {
+        agent any
+        stages {
+            stage('build app') {
+                steps {
+                   script {
+                       echo "building the application..."
+                   }
+                }
+            }
+            stage('build image') {
+                steps {
+                    script {
+                        echo "building the docker image..."
+                    }
+                }
+            }
+            stage('deploy') {
+                environment {
+                    AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                    AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_access_secret_key')
+                }
+                steps {
+                    script {
+                       echo 'deploying docker image...'
+                       sh 'kubectl create deployment nginx-deployment --image=nginx'
+                    }
+                }
+            }
+        }
+    }
+```
+
+#### Pipeline Execution and Cluster Validation
+Executed the Jenkins pipeline, successfully fetching the source code and progressing through the build and deployment stages. The Jenkins agent securely deployed the `nginx` container workload to the EKS cluster. Verified the instantiation of the managed pods via the local host's Kubernetes interface.
+
+<img width="1024" height="385" alt="image" src="https://github.com/user-attachments/assets/1bfd0e90-a06b-43f5-a646-d96f8e0f89d2" />
+
+```
+    Started by user emre
+    ...
+    [Pipeline] { (deploy)
+    [Pipeline] withCredentials
+    Masking supported pattern matches of $AWS_ACCESS_KEY_ID or $AWS_SECRET_ACCESS_KEY
+    [Pipeline] {
+    [Pipeline] script
+    [Pipeline] {
+    [Pipeline] echo
+    deploying docker image...
+    [Pipeline] sh
+    + kubectl create deployment nginx-deployment --image=nginx
+    deployment.apps/nginx-deployment created
+    [Pipeline] }
+    ...
+    Finished: SUCCESS
+    
+    root@PC:/mnt/c/Users/emrea# kubectl get pod
+    NAME                                READY   STATUS    RESTARTS   AGE
+    nginx-deployment-7d6869886d-bvbm6   0/1     Pending   0          4m52s
+```
+
  
 </details>
 
