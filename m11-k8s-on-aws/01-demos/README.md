@@ -852,7 +852,194 @@ Verified the successful execution of the Jenkins pipeline. Monitored the Kuberne
 <summary>Complete CI/CD Pipeline with AWS ECR</summary>
  <br />
  
- **content will be here**
+ ### Complete CI/CD Pipeline Migration to AWS ECR
+
+#### AWS ECR Repository and Jenkins Credentials Configuration
+Provisioned a dedicated Elastic Container Registry (ECR) repository via the AWS Management Console to securely host the application's Docker images. Subsequently, established the corresponding AWS ECR authentication credentials within the Jenkins environment to authorize the pipeline for automated image push operations.
+
+
+<img width="1702" height="365" alt="image" src="https://github.com/user-attachments/assets/6ec9e46f-6b29-4fa4-afb8-77df594ecee6" />
+
+<img width="1704" height="747" alt="image" src="https://github.com/user-attachments/assets/32b62a9d-78e6-4282-867c-4a8cb42adb72" />
+
+
+#### Kubernetes Secret Provisioning for ECR Authentication
+Generated a Kubernetes `docker-registry` secret (`aws-registry-key`) directly within the EKS cluster. This secret utilizes the generated AWS ECR authorization token to grant the EKS worker nodes the necessary permissions to authenticate against the private registry and pull container images during deployment.
+
+    root@PC:~/k8s-on-aws# kubectl get secret
+    NAME              TYPE                              DATA   AGE
+    my-registry-key   kubernetes.io/dockerconfigjson    1      72m
+    
+    root@PC:~/k8s-on-aws# kubectl create secret docker-registry aws-registry-key \
+    --docker-server=731872836472.dkr.ecr.eu-central-1.amazonaws.com \
+    --docker-username=AWS \
+    --docker-password=eyJwYXlsb2FkIjoiaWpDYXFkTXQ3NHp6YlVmQkYzeWtEZkgzM3JLRk43SlVBSEZVV1FZVHR0N2h3NEpMcGJ5V3NqalVUaFFQMHBSR3NkNmtFeEhTY3pUU2U0eUdFckNVQ0hzNmNHQU5FSHFoOWFDbXZFcEZRZG5QTjNVWnlINDVIWGtobVFvRlFxbm9YU0x1M0FNclNYQ1BHclhpYVhiTUx3OUVYbmVzNjZZL3laNFFoNEVkYTAyL2hSN002U0RXdmcwTVh2REwrZ1Q2SjhyMHB3YkNJVDAxV09JanJFS28xMTVQN2xBWnlwSGNwOXcvQmxqeEQvdlFEbFFBcWN3WWluQ3ptbEZXRm9FTjNJblJYSWptSTB3SkRyWWsvN05CWmlnbFRqV0h5TUpySk9BdkNHWjNia3lsUXBTZGp0dHBVbzUzSzhmaWNuUkZFSDNEYTExV082bHBSM1JjV3dsc0ZQeHhMdHZ0Q3dROTFRWFIzOTZkSGsrSzlTRnNzQytKNjQ1RFh2b1pRdXY3SE9JWXhXd2s4U2Ryd3N5TG9FTXF4WWZsVHJ6L0FRQXhOYWxKZ29tRG95YUtDZHQ1RkV6V3h1NUM0U1VDMis2czdKb2RkSFM2QW9Yai9OZXlqYXd0Skg3YmV5ODE1S3NvbXhkV2FyVDU1Q2VmRi91c2FxbFY2clg3bTU5elBFd0xvc3JUWEs0Y0tFUWJubFM3N2J5TWJORzZ3MlNNbUVTZVlHNTZtZTFsRjNDK1hmazh1ekF3K09vMjZYdGFGMGZqRWJZUmlBU1pmazQ1MDZwVHFPNjZ4TFlqcVduTWI1cC9TeHRiMWFUZ3l2S1VGWkhuZExmVlRMUjVmS295ZzY4bW9QTlJGbmhlaUZXV0U5dnowdWkxTHlpT0NISzJqNzBtNG9GeEhiMVhWMG1FaTRTclZ3ZGQwWXRISzhCMCtxZ3YwRFJmdWlaTnJ6eEJZcHlDYnN1YlZKQ3pMOXZoZThCT2Q3a3BOU1dYL0FpR1dkZXNQSURUVzJMZkpqM0c4dlo2cHVJSDNjN2puT2dybjBpK2NoWk9CbTVFcUk0akxab3paVjZRcExoUmViTDhYTlg3eTFDOGE0SzhwOHhlejIrQ005Sjk3RzFiRFdUUzlyU2xGTUNRcHVsMlMySGp5RDRaU3RGZ0xvdG9DMXNHYkZzRnArVW1wcmdvcmZFbUtiUE9ST2pVanhCb2xNRSthZUpxdm5XcWVublFlVHh0MEpjU1RiLzFlcTU2cGg5TFhIdFVFZGRRV3RET21Gd1dtTjJWM253UXlUQkJMTWRCVlpUUTBVekYxa3ZtOVBKY2w4ci9mazllT2VPKzMvbi9TZTRwcVYvQlJPVHRsSjB3YVZNM0hvV281eW89IiwiZGF0YWtleSI6IkFRRUJBSGgzellPZHRwQkJTVncvWTJhbjhCWElENGt3TFFmbm9UajV6d1p0R0pab1pRQUFBSDR3ZkFZSktvWklodmNOQVFjR29HOHdiUUlCQURCb0Jna3Foa2lHOXcwQkJ3RXdIZ1lKWUlaSUFXVURCQUV1TUJFRURBNjhaSVpjVFhFNC84NndBQUlCRUlBN3pNNWllc21zRWhzaS9hVEo5YndpT1F4Uk96cHM2UFVsSTlja09OUkJ4VFFmaTFyNkc1aG9pTnZrNFBXOGxIZjFjU0xVN2ZKTVhDYnJtVlU9IiwidmVyc2lvbiI6IjIiLCJ0eXBlIjoiREFUQV9LRVkiLCJleHBpcmF0aW9uIjoxNzg4NTA2NDA3fQ==
+    secret/aws-registry-key created
+
+#### Dynamic Kubernetes Manifests Configuration
+Reconfigured the Kubernetes deployment architecture to integrate the AWS infrastructure. Modified the `deployment.yaml` manifest to enforce ECR registry authentication via `imagePullSecrets` and parameterized the container image source to target the dedicated ECR URI dynamically.
+
+    deployment.yaml:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: $APP_NAME
+      labels:
+        app: $APP_NAME
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: $APP_NAME
+      template:
+        metadata:
+          labels:
+            app: $APP_NAME
+        spec:
+          imagePullSecrets:
+            - name: aws-registry-key
+          containers:
+            - name: $APP_NAME
+              image: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-maven-app:$IMAGE_NAME
+              imagePullPolicy: Always
+              ports:
+                - containerPort: 8080
+    
+    service.yaml:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: $APP_NAME
+    spec:
+      selector:
+        app: $APP_NAME
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 8080
+
+#### CI/CD Pipeline Refactoring & Execution
+Refactored the declarative `Jenkinsfile` to seamlessly transition the pipeline's publishing target from DockerHub to AWS ECR. Introduced `DOCKER_REPO_SERVER` environmental variables and scoped the deployment stages to utilize ECR-specific credentials. The subsequent pipeline execution successfully orchestrated the semantic version bump, artifact compilation, image packaging, ECR authentication/push, EKS cluster deployment, and finalized the lifecycle by committing the updated state back to the GitHub repository.
+
+    Jenkinsfile:
+    #!/usr/bin/env groovy
+    pipeline {
+        agent any
+        tools {
+            maven 'maven-3.9'
+        }
+        environment {
+            DOCKER_REPO_SERVER = '731872836472.dkr.ecr.eu-central-1.amazonaws.com'
+            DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-maven-app"
+        }
+        stages {
+            stage('increment version') {
+                steps {
+                    script {
+                        echo 'incrementing app version...'
+                        sh 'mvn build-helper:parse-version versions:set \
+                            -DnewVersion=\\${parsedVersion.majorVersion}.\\${parsedVersion.minorVersion}.\\${parsedVersion.nextIncrementalVersion} \
+                            versions:commit'
+                        def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                        def version = matcher[0][1]
+                        env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                    }
+                }
+            }
+            stage('build app') {
+                steps {
+                    script {
+                        echo 'building the application...'
+                        sh 'mvn clean package'
+                    }
+                }
+            }
+            stage('build image') {
+                steps {
+                    script {
+                        echo "building the docker image..."
+                        withCredentials([usernamePassword(credentialsId: 'ecr-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]){
+                            sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} ."
+                            sh "echo $PASS | docker login -u $USER --password-stdin ${DOCKER_REPO_SERVER}"
+                            sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
+                        }
+                    }
+                }
+            }
+            stage('deploy') {
+                environment {
+                    AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                    AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_access_secret_key')
+                    APP_NAME = 'java-maven-app'
+                }
+                steps {
+                    script {
+                       echo 'deploying docker image...'
+                       sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                       sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
+                    }
+                }
+            }
+            stage('commit version update'){
+                steps {
+                    script {
+                        withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]){
+                            sh "git remote set-url origin https://${USER}:${PASS}@github.com/emrearabacioglu/java-maven-app.git"
+                            sh 'git add .'
+                            sh 'git commit -m "ci: version bump"'
+                            sh 'git push origin HEAD:jenkins-jobs'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Jenkins Build console output:
+    Started by user emre
+    ...
+    [Pipeline] sh
+    + docker login -u AWS --password-stdin 731872836472.dkr.ecr.eu-central-1.amazonaws.com
+    Login Succeeded
+    [Pipeline] sh
+    + docker push 731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-maven-app:1.1.14-6
+    The push refers to repository [731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-maven-app]
+    ...
+    4fe17990842d: Pushed
+    1.1.14-6: digest: sha256:fd04029134d36686a798ba497135e16ed898d58cc3da2a94c123e94854b903b6 size: 1159
+    ...
+    [Pipeline] sh
+    + envsubst
+    + kubectl apply -f -
+    deployment.apps/java-maven-app created
+    [Pipeline] sh
+    + envsubst
+    + kubectl apply -f -
+    service/java-maven-app unchanged
+    ...
+    [Pipeline] sh
+    + git commit -m ci: version bump
+    [detached HEAD c1b158f] ci: version bump
+     4 files changed, 7 insertions(+), 7 deletions(-)
+    [Pipeline] sh
+    + git push origin HEAD:jenkins-jobs
+    To https://github.com/emrearabacioglu/java-maven-app.git
+       ef42f60..c1b158f  HEAD -> jenkins-jobs
+    ...
+    Finished: SUCCESS
+
+#### EKS Cluster Workload Verification
+Monitored the deployment rollout to confirm the successful orchestration and operational readiness of the newly authenticated pods running the latest ECR image revision.
+
+    root@PC:~/k8s-on-aws# kubectl get pod
+    NAME                              READY   STATUS    RESTARTS   AGE
+    java-maven-app-f5bb74f54-2kxj5    1/1     Running   0          3m9s
+    java-maven-app-f5bb74f54-k4s7r    1/1     Running   0          3m9s
+
+<img width="1558" height="479" alt="image" src="https://github.com/user-attachments/assets/ebe48e45-1f1f-44ae-bf1e-5de92027e33d" />
+<img width="1700" height="609" alt="image" src="https://github.com/user-attachments/assets/36fcb2e5-dc0a-43bb-8d66-e5861fe1d806" />
+
+
  
 </details>
 
