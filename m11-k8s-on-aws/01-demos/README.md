@@ -651,7 +651,197 @@ Executed the Jenkins pipeline, successfully fetching the source code and progres
 <summary>Complete CI/CD Pipeline with DockerHub</summary>
  <br />
  
- **content will be here**
+### Complete CI/CD Pipeline Implementation with DockerHub and AWS EKS
+
+#### Jenkins Environment Configuration for Dynamic Manifests
+Demonstrated environment preparation on the DigitalOcean server by accessing the active Jenkins Docker container (`4b8376846d81`). Installed the `gettext-base` package to provision the `envsubst` utility, a strict prerequisite for dynamically injecting Jenkins pipeline environment variables into Kubernetes YAML manifests prior to deployment.
+
+    root@PC:~/k8s-on-aws# ssh root@164.90.179.224
+    ...
+    root@jenkins:~# docker exec -u 0  -it 4b8376846d81 bash
+    root@4b8376846d81:/# apt-get install gettext-base
+    Reading package lists... Done
+    Building dependency tree... Done
+    Reading state information... Done
+    The following NEW packages will be installed:
+      gettext-base
+    ...
+    Unpacking gettext-base (0.23.1-2) ...
+    Setting up gettext-base (0.23.1-2) ...
+    root@4b8376846d81:/# envsubst
+    ^C
+    root@4b8376846d81:/# exit
+
+#### Kubernetes Secrets Management & Registry Authentication
+Configured secure cluster authentication for external container registries. Provisioned a Kubernetes Secret (`my-registry-key`) within the EKS control plane containing DockerHub credentials. This authorized the EKS worker nodes to successfully pull the compiled `demo-app` images during the deployment phase. Executed environment cleanup by purging legacy deployments.
+
+    root@PC:~/k8s-on-aws# kubectl get node
+    NAME                                             STATUS   ROLES    AGE     VERSION
+    ip-192-168-26-26.eu-central-1.compute.internal   Ready    <none>   7h34m   v1.36.3-eks-cb19647
+    ip-192-168-68-99.eu-central-1.compute.internal   Ready    <none>   7h35m   v1.36.3-eks-cb19647
+    
+    root@PC:~/k8s-on-aws# kubectl create secret docker-registry my-registry-key \
+    > --docker-server=docker.io \
+    > --docker-username=emrearabacioglu \
+    > --docker-password=Docker.123
+    secret/my-registry-key created
+    
+    root@PC:~/k8s-on-aws# kubectl get secret
+    NAME              TYPE                              DATA   AGE
+    my-registry-key   kubernetes.io/dockerconfigjson    1      8s
+    
+    root@PC:~/k8s-on-aws# kubectl delete deployment nginx-deployment
+    deployment.apps "nginx-deployment" deleted from default namespace
+
+#### Parameterized Application Deployment & Service Definition
+Developed parameterized Kubernetes manifests to govern the application workload and network accessibility. The `deployment.yaml` was explicitly configured with `imagePullSecrets` targeting the DockerHub registry key, while abstracting the application name and image tag as variables (`$APP_NAME`, `$IMAGE_NAME`). A corresponding `service.yaml` was formulated to expose the workloads internally via ClusterIP.
+
+    deployment.yaml:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: $APP_NAME
+      labels:
+        app: $APP_NAME
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: $APP_NAME
+      template:
+        metadata:
+          labels:
+            app: $APP_NAME
+        spec:
+          imagePullSecrets:
+            - name: my-registry-key
+          containers:
+            - name: $APP_NAME
+              image: emrearabacioglu/demo-app:$IMAGE_NAME
+              imagePullPolicy: Always
+              ports:
+                - containerPort: 8080
+    
+    service.yaml:
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: $APP_NAME
+    spec:
+      selector:
+        app: $APP_NAME
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 8080
+
+#### Pipeline Architecture & Execution Strategy
+Engineered and executed a comprehensive Groovy-based `Jenkinsfile` orchestrating the full CI/CD lifecycle. The pipeline programmatically bumped the semantic version via Maven, built the Java artifact, packaged the Docker image, and pushed it to DockerHub. It subsequently deployed the workloads to EKS by piping the manifest files through `envsubst` to resolve variables dynamically, and finalized the process by committing the version bump back to the `jenkins-jobs` branch on GitHub.
+
+    Jenkinsfile:
+    #!/usr/bin/env groovy
+    pipeline {
+        agent any
+        tools {
+            maven 'maven-3.9'
+        }
+        environment {
+            DOCKER_REPO = 'emrearabacioglu/demo-app'
+        }
+        stages {
+            stage('increment version') {
+                steps {
+                    script {
+                        echo 'incrementing app version...'
+                        sh 'mvn build-helper:parse-version versions:set \
+                            -DnewVersion=\\${parsedVersion.majorVersion}.\\${parsedVersion.minorVersion}.\\${parsedVersion.nextIncrementalVersion} \
+                            versions:commit'
+                        def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+                        def version = matcher[0][1]
+                        env.IMAGE_NAME = "$version-$BUILD_NUMBER"
+                    }
+                }
+            }
+            // ... [build app & build image stages omitted for brevity] ...
+            stage('deploy') {
+                environment {
+                    AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                    AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_access_secret_key')
+                    APP_NAME = 'java-maven-app'
+                }
+                steps {
+                    script {
+                       echo 'deploying docker image...'
+                       sh 'envsubst < kubernetes/deployment.yaml | kubectl apply -f -'
+                       sh 'envsubst < kubernetes/service.yaml | kubectl apply -f -'
+                    }
+                }
+            }
+            stage('commit version update'){
+                steps {
+                    script {
+                        withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]){
+                            sh "git remote set-url origin https://${USER}:${PASS}@github.com/emrearabacioglu/java-maven-app.git"
+                            sh 'git add .'
+                            sh 'git commit -m "ci: version bump"'
+                            sh 'git push origin HEAD:jenkins-jobs'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+#### Deployment Validation and Cluster Troubleshooting
+Verified the successful execution of the Jenkins pipeline. Monitored the Kubernetes cluster to ensure proper workload distribution. Identified initial scheduling constraints (ENI limitations on t2.micro nodes resulting in `Pending` pods) and confirmed the successful transition of the deployment replicas to `Running` status upon securing adequate compute resources. 
+
+    Started by user emre
+    ...
+    [Pipeline] sh
+    + envsubst
+    + kubectl apply -f -
+    deployment.apps/java-maven-app configured
+    [Pipeline] sh
+    + envsubst
+    + kubectl apply -f -
+    service/java-maven-app unchanged
+    ...
+    + git commit -m ci: version bump
+    [detached HEAD 6329e06] ci: version bump
+    ...
+    + git push origin HEAD:jenkins-jobs
+    To https://github.com/emrearabacioglu/java-maven-app.git
+       321573d..6329e06  HEAD -> jenkins-jobs
+    ...
+    Finished: SUCCESS
+    
+    root@PC:~/k8s-on-aws# kubectl describe pod java-maven-app-6d9b6c84cf-8m6bd
+    ...
+    Events:
+      Type     Reason            Age    From               Message
+      ----     ------            ----   ----               -------
+      Warning  FailedScheduling  6m6s   default-scheduler  0/2 nodes are available: 2 Too many pods. no new claims to deallocate...
+    
+    root@PC:~/k8s-on-aws# kubectl get pod
+    NAME                              READY   STATUS    RESTARTS   AGE
+    java-maven-app-646744859d-8wgxv   1/1     Running   0          9m58s
+    java-maven-app-646744859d-czzr6   1/1     Running   0          3m2s
+    
+    root@PC:~/k8s-on-aws# kubectl get deployment
+    NAME             READY   UP-TO-DATE   AVAILABLE   AGE
+    java-maven-app   2/2     2            2           13m
+    
+    root@PC:~/k8s-on-aws# kubectl get service
+    NAME             TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+    java-maven-app   ClusterIP   10.100.41.247   <none>        80/TCP    13m
+
+
+
+<img width="1909" height="733" alt="image" src="https://github.com/user-attachments/assets/97fa43d3-621e-40a5-9b98-2706ad5ec804" />
+
+<img width="1895" height="813" alt="image" src="https://github.com/user-attachments/assets/19f9cd07-f26b-4f52-9107-67ff873bd7c2" />
+
+
  
 </details>
 
