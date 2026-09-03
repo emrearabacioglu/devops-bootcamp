@@ -648,28 +648,6 @@ Executed the Jenkins pipeline, successfully fetching the source code and progres
 ******
 
 <details>
-<summary>Deploy to LKE cluster from Jenkins Pipeline</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
-<summary>Note on Best Practices - Credentials for different services in Jenkins</summary>
- <br />
- 
- **content will be here**
- 
-</details>
-
-
-******
-
-<details>
 <summary>Complete CI/CD Pipeline with DockerHub</summary>
  <br />
  
