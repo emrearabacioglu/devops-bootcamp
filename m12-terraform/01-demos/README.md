@@ -509,7 +509,221 @@ Demonstrated precise infrastructure teardown by utilizing the targeted destroy c
 <summary>More Terraform commands</summary>
  <br />
  
- **content will be here**
+### Demo Executed: Infrastructure Lifecycle Management
+
+
+#### Executed Preview Command
+Generated a speculative execution plan to review pending infrastructure modifications prior to actual deployment. The output detailed the exact resources slated for creation, enabling safe validation of the configuration code against the current state file.
+
+    root@PC:~/modules/terraform# terraform plan
+    data.aws_vpc.existing_vpc: Reading...
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0cd62b99a8d300dd6]
+    data.aws_vpc.existing_vpc: Read complete after 0s [id=vpc-0511d66bb75f2d673]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-07584f50927802677]
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-2 will be created
+      + resource "aws_subnet" "dev-subnet-2" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "172.31.48.0/20"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags                                           = {
+              + "Name" = "subnet-2-default"
+            }
+          + tags_all                                       = {
+              + "Name" = "subnet-2-default"
+            }
+          + vpc_id                                         = "vpc-0511d66bb75f2d673"
+        }
+    
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    
+    ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    
+    Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
+
+#### Applied Config File Without Preview
+Streamlined the deployment pipeline by executing the configuration application with the auto-approve flag. This bypassed the interactive manual confirmation prompt, instantly provisioning the targeted subnet (`dev-subnet-2`) into the AWS environment.
+
+
+    root@PC:~/modules/terraform# terraform apply -auto-approve
+    data.aws_vpc.existing_vpc: Reading...
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0cd62b99a8d300dd6]
+    data.aws_vpc.existing_vpc: Read complete after 0s [id=vpc-0511d66bb75f2d673]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-07584f50927802677]
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-2 will be created
+      + resource "aws_subnet" "dev-subnet-2" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "172.31.48.0/20"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags                                           = {
+              + "Name" = "subnet-2-default"
+            }
+          + tags_all                                       = {
+              + "Name" = "subnet-2-default"
+            }
+          + vpc_id                                         = "vpc-0511d66bb75f2d673"
+        }
+    
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    aws_subnet.dev-subnet-2: Creating...
+    aws_subnet.dev-subnet-2: Creation complete after 1s [id=subnet-006d83142a1928369]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+
+#### Destroyed Complete Infrastructure
+Executed a comprehensive environment teardown. Initiated the global destroy command, validated the execution plan marking all managed resources (two subnets and one VPC) for deletion, and authorized the full decommissioning of the simulated network architecture.
+
+
+    root@PC:~/modules/terraform# terraform destroy
+    data.aws_vpc.existing_vpc: Reading...
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0cd62b99a8d300dd6]
+    data.aws_vpc.existing_vpc: Read complete after 0s [id=vpc-0511d66bb75f2d673]
+    aws_subnet.dev-subnet-2: Refreshing state... [id=subnet-006d83142a1928369]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-07584f50927802677]
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+    the following symbols:
+      - destroy
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-1 will be destroyed
+      - resource "aws_subnet" "dev-subnet-1" {
+          - arn                                            = "arn:aws:ec2:eu-central-1:731872836472:subnet/subnet-07584f50927802677" -> null
+          - assign_ipv6_address_on_creation                = false -> null
+          - availability_zone                              = "eu-central-1a" -> null
+          - availability_zone_id                           = "euc1-az2" -> null
+          - cidr_block                                     = "10.0.10.0/24" -> null
+          - enable_dns64                                   = false -> null
+          - enable_lni_at_device_index                     = 0 -> null
+          - enable_resource_name_dns_a_record_on_launch    = false -> null
+          - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+          - id                                             = "subnet-07584f50927802677" -> null
+          - ipv6_native                                    = false -> null
+          - map_customer_owned_ip_on_launch                = false -> null
+          - map_public_ip_on_launch                        = false -> null
+          - owner_id                                       = "731872836472" -> null
+          - private_dns_hostname_type_on_launch            = "ip-name" -> null
+          - region                                         = "eu-central-1" -> null
+          - tags                                           = {
+              - "Name" = "subnet-1-dev"
+            } -> null
+          - tags_all                                       = {
+              - "Name" = "subnet-1-dev"
+            } -> null
+          - vpc_id                                         = "vpc-0cd62b99a8d300dd6" -> null
+            # (4 unchanged attributes hidden)
+        }
+    
+      # aws_subnet.dev-subnet-2 will be destroyed
+      - resource "aws_subnet" "dev-subnet-2" {
+          - arn                                            = "arn:aws:ec2:eu-central-1:731872836472:subnet/subnet-006d83142a1928369" -> null
+          - assign_ipv6_address_on_creation                = false -> null
+          - availability_zone                              = "eu-central-1a" -> null
+          - availability_zone_id                           = "euc1-az2" -> null
+          - cidr_block                                     = "172.31.48.0/20" -> null
+          - enable_dns64                                   = false -> null
+          - enable_lni_at_device_index                     = 0 -> null
+          - enable_resource_name_dns_a_record_on_launch    = false -> null
+          - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+          - id                                             = "subnet-006d83142a1928369" -> null
+          - ipv6_native                                    = false -> null
+          - map_customer_owned_ip_on_launch                = false -> null
+          - map_public_ip_on_launch                        = false -> null
+          - owner_id                                       = "731872836472" -> null
+          - private_dns_hostname_type_on_launch            = "ip-name" -> null
+          - region                                         = "eu-central-1" -> null
+          - tags                                           = {
+              - "Name" = "subnet-2-default"
+            } -> null
+          - tags_all                                       = {
+              - "Name" = "subnet-2-default"
+            } -> null
+          - vpc_id                                         = "vpc-0511d66bb75f2d673" -> null
+            # (4 unchanged attributes hidden)
+        }
+    
+      # aws_vpc.development-vpc will be destroyed
+      - resource "aws_vpc" "development-vpc" {
+          - arn                                  = "arn:aws:ec2:eu-central-1:731872836472:vpc/vpc-0cd62b99a8d300dd6" -> null
+          - assign_generated_ipv6_cidr_block     = false -> null
+          - cidr_block                           = "10.0.0.0/16" -> null
+          - default_network_acl_id               = "acl-000003a010b920691" -> null
+          - default_route_table_id               = "rtb-03c87f77f2b741028" -> null
+          - default_security_group_id            = "sg-08a828fed82461591" -> null
+          - dhcp_options_id                      = "dopt-0edc4ad56ac7a15fc" -> null
+          - enable_dns_hostnames                 = false -> null
+          - enable_dns_support                   = true -> null
+          - enable_network_address_usage_metrics = false -> null
+          - id                                   = "vpc-0cd62b99a8d300dd6" -> null
+          - instance_tenancy                     = "default" -> null
+          - ipv6_netmask_length                  = 0 -> null
+          - main_route_table_id                  = "rtb-03c87f77f2b741028" -> null
+          - owner_id                             = "731872836472" -> null
+          - region                               = "eu-central-1" -> null
+          - tags                                 = {
+              - "Name" = "development"
+            } -> null
+          - tags_all                             = {
+              - "Name" = "development"
+            } -> null
+            # (4 unchanged attributes hidden)
+        }
+    
+    Plan: 0 to add, 0 to change, 3 to destroy.
+    
+    Do you really want to destroy all resources?
+      Terraform will destroy all your managed infrastructure, as shown above.
+      There is no undo. Only 'yes' will be accepted to confirm.
+    
+      Enter a value: yes
+    
+    aws_subnet.dev-subnet-2: Destroying... [id=subnet-006d83142a1928369]
+    aws_subnet.dev-subnet-1: Destroying... [id=subnet-07584f50927802677]
+    aws_subnet.dev-subnet-1: Destruction complete after 0s
+    aws_vpc.development-vpc: Destroying... [id=vpc-0cd62b99a8d300dd6]
+    aws_subnet.dev-subnet-2: Destruction complete after 1s
+    aws_vpc.development-vpc: Destruction complete after 1s
+    
+    Destroy complete! Resources: 3 destroyed.
+
  
 </details>
 
