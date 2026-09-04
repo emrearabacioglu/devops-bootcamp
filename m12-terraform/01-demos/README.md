@@ -6,7 +6,6 @@
  
  ### Demo Executed: Terraform Infrastructure and AWS Provider Initialization
 
-*[Note: Since some infrastructure management tasks and credential generations are performed via web dashboards rather than the terminal, I highly recommend enriching this repository with relevant UI screenshots to visually demonstrate those configurations.]*
 
 #### Terraform Environment Installation
 Provisioned the local Linux environment by securely importing the official HashiCorp GPG keys, adding the apt repository, and installing the Terraform CLI to enable Infrastructure as Code (IaC) deployments.
@@ -80,7 +79,194 @@ Executed the Terraform initialization process to configure the backend, generate
 <summary>Resources & Data Sources</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: AWS Network Provisioning with Terraform
+
+#### Created new VPC and Subnet in that new VPC
+Authored the declarative infrastructure configuration in `main.tf` to establish a custom Virtual Private Cloud (VPC) with a `10.0.0.0/16` CIDR block and an associated subnet within the `eu-central-1a` availability zone. Successfully deployed the configuration to provision the networking resources directly in the AWS environment.
+
+<img width="1708" height="829" alt="image" src="https://github.com/user-attachments/assets/fee6e5c5-6a75-431e-87df-98412cdfeabb" />
+<img width="1704" height="823" alt="image" src="https://github.com/user-attachments/assets/172a34b8-f721-4c8e-8db6-170fcc327b72" />
+
+
+```bash
+    root@PC:~/modules/terraform# cat main.tf
+    provider "aws" {
+        region = "eu-central-1"
+        access_key = "********"
+        secret_key = "********"
+    }
+    
+    resource "aws_vpc" "development-vpc" {
+        cidr_block = "10.0.0.0/16"
+    }
+    
+    resource "aws_subnet" "dev-subnet-1" {
+        vpc_id = aws_vpc.development-vpc.id
+        cidr_block = "10.0.10.0/24"
+        availability_zone = "eu-central-1a"
+    }
+
+    root@PC:~/modules/terraform# terraform apply
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+    the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-1 will be created
+      + resource "aws_subnet" "dev-subnet-1" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "10.0.10.0/24"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags_all                                       = (known after apply)
+          + vpc_id                                         = (known after apply)
+        }
+    
+      # aws_vpc.development-vpc will be created
+      + resource "aws_vpc" "development-vpc" {
+          + arn                                  = (known after apply)
+          + cidr_block                           = "10.0.0.0/16"
+          + default_network_acl_id               = (known after apply)
+          + default_route_table_id               = (known after apply)
+          + default_security_group_id            = (known after apply)
+          + dhcp_options_id                      = (known after apply)
+          + enable_dns_hostnames                 = (known after apply)
+          + enable_dns_support                   = true
+          + enable_network_address_usage_metrics = (known after apply)
+          + id                                   = (known after apply)
+          + instance_tenancy                     = "default"
+          + ipv6_association_id                  = (known after apply)
+          + ipv6_cidr_block                      = (known after apply)
+          + ipv6_cidr_block_network_border_group = (known after apply)
+          + main_route_table_id                  = (known after apply)
+          + owner_id                             = (known after apply)
+          + region                               = "eu-central-1"
+          + tags_all                             = (known after apply)
+        }
+    
+    Plan: 2 to add, 0 to change, 0 to destroy.
+    
+    Do you want to perform these actions?
+      Terraform will perform the actions described above.
+      Only 'yes' will be accepted to approve.
+    
+      Enter a value: yes
+    
+    aws_vpc.development-vpc: Creating...
+    aws_vpc.development-vpc: Creation complete after 2s [id=vpc-0cd62b99a8d300dd6]
+    aws_subnet.dev-subnet-1: Creating...
+    aws_subnet.dev-subnet-1: Creation complete after 0s [id=subnet-07584f50927802677]
+    
+    Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+```
+#### Created new Subnet in existing default VPC (with data)
+Expanded the Terraform configuration to implement a `data` block, enabling the dynamic retrieval of the existing AWS default VPC. Provisioned a secondary subnet (`172.31.48.0/20`) attached directly to the fetched default VPC ID. Validated infrastructure idempotency by re-executing the deployment, confirming the state precisely matched the codebase with zero required changes.
+
+<img width="1696" height="825" alt="image" src="https://github.com/user-attachments/assets/ace68462-cfc6-4a00-bb6b-51cc0c88d257" />
+
+```bash
+    root@PC:~/modules/terraform# cat main.tf
+    provider "aws" {
+        region = "eu-central-1"
+        access_key = "********"
+        secret_key = "********"
+    }
+    
+    resource "aws_vpc" "development-vpc" {
+        cidr_block = "10.0.0.0/16"
+    }
+    
+    resource "aws_subnet" "dev-subnet-1" {
+        vpc_id = aws_vpc.development-vpc.id
+        cidr_block = "10.0.10.0/24"
+        availability_zone = "eu-central-1a"
+    }
+    
+    data "aws_vpc" "existing_vpc" {
+        default = true
+    }
+    
+    resource "aws_subnet" "dev-subnet-2" {
+        vpc_id = data.aws_vpc.existing_vpc.id
+        cidr_block = "172.31.48.0/20"
+        availability_zone = "eu-central-1a"
+    }
+    
+    root@PC:~/modules/terraform# terraform apply
+    data.aws_vpc.existing_vpc: Reading...
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0cd62b99a8d300dd6]
+    data.aws_vpc.existing_vpc: Read complete after 1s [id=vpc-0511d66bb75f2d673]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-07584f50927802677]
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+    the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-2 will be created
+      + resource "aws_subnet" "dev-subnet-2" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "172.31.48.0/20"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags_all                                       = (known after apply)
+          + vpc_id                                         = "vpc-0511d66bb75f2d673"
+        }
+    
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    
+    Do you want to perform these actions?
+      Terraform will perform the actions described above.
+      Only 'yes' will be accepted to approve.
+    
+      Enter a value: yes
+    
+    aws_subnet.dev-subnet-2: Creating...
+    aws_subnet.dev-subnet-2: Creation complete after 1s [id=subnet-03b6a0bb1fff7080d]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+    
+    root@PC:~/modules/terraform# terraform apply
+    data.aws_vpc.existing_vpc: Reading...
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0cd62b99a8d300dd6]
+    data.aws_vpc.existing_vpc: Read complete after 0s [id=vpc-0511d66bb75f2d673]
+    aws_subnet.dev-subnet-2: Refreshing state... [id=subnet-03b6a0bb1fff7080d]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-07584f50927802677]
+    
+    No changes. Your infrastructure matches the configuration.
+    
+    Terraform has compared your real infrastructure against your configuration and found no differences, so no changes are needed.
+    
+    Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+```
  
 </details>
 
