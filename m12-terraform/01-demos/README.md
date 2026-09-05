@@ -1606,7 +1606,111 @@ Successfully accessed the newly recreated server using the locally generated def
 <summary>Demo Project 1: Automate your AWS Infrastructure - Part 3</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: Automated EC2 Provisioning with Docker & Nginx
+
+#### Configured Terraform to install Docker and run nginx image
+Automated the server bootstrapping process by injecting a `user_data` script into the EC2 instance configuration. This script was designed to update the OS, install Docker, append the `ec2-user` to the Docker group, and deploy an Nginx container automatically upon boot. Validated the deployment by connecting via SSH, confirming the necessity of a session refresh to inherit the newly assigned group permissions, and ultimately verifying the running container.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Terraform will perform the following actions:
+    
+      # aws_instance.myapp-server must be replaced
+    -/+ resource "aws_instance" "myapp-server" {
+    ...
+      + user_data                            = <<-EOT # forces replacement
+            #!/bin/bash
+            sudo yum update -y && sudo yum install docker -y
+            sudo systemctl start docker
+            sudo usermod -aG docker ec2-user
+            docker run -d -p 8080:80 nginx
+        EOT
+    ...
+      ~ user_data_replace_on_change          = false -> true
+    ...
+    Plan: 1 to add, 0 to change, 1 to destroy.
+    ...
+    aws_instance.myapp-server: Creation complete after 13s [id=i-0839b33e99a21adc8]
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+    
+    Outputs:
+    ec2_public_ip = "18.198.22.100"
+
+    root@PC:~/modules/terraform (feature/EC2)# ssh ec2-user@18.198.22.100
+    ...
+    [ec2-user@ip-10-0-10-74 ~]$ docker ps
+    permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.44/containers/json": dial unix /var/run/docker.sock: connect: permission denied
+    [ec2-user@ip-10-0-10-74 ~]$ exit
+    logout
+    Connection to 18.198.22.100 closed.
+
+    root@PC:~/modules/terraform (feature/EC2)# ssh ec2-user@18.198.22.100
+    ...
+    [ec2-user@ip-10-0-10-74 ~]$ docker ps
+    CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS                                   NAMES
+    0fcfec58c119   nginx     "/docker-entrypoint.…"   58 seconds ago   Up 56 seconds   0.0.0.0:8080->80/tcp, :::8080->80/tcp   jovial_hopper
+```
+#### Extract shell commands to own shell script
+Refactored the infrastructure codebase by extracting the inline `user_data` script into a dedicated external shell script (`entry-script.sh`). Utilized Terraform's `file()` function to parse the script, improving modularity and code readability. Deployed the updated configuration and successfully validated the container status on the newly provisioned instance.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat entry-script.sh
+    #!/bin/bash
+    sudo yum update -y && sudo yum install docker -y
+    sudo systemctl start docker
+    sudo usermod -aG docker ec2-user
+    docker run -d -p 8080:80 nginx
+
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    ...
+    resource "aws_instance" "myapp-server" {
+        ami = data.aws_ami.latest-amazon-linux-image.id
+        instance_type = var.instance_type
+    
+        subnet_id = aws_subnet.myapp-subnet-1.id
+        vpc_security_group_ids = [aws_default_security_group.default-sg.id]
+        availability_zone = var.avail_zone
+    
+        associate_public_ip_address = true
+        key_name = aws_key_pair.ssh-key.key_name
+    
+        user_data = file("entry-script.sh")
+    
+        user_data_replace_on_change = true
+    
+        tags = {
+            Name: "${var.env_prefix}-server"
+        }
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 1 to add, 0 to change, 1 to destroy.
+    ...
+    aws_instance.myapp-server: Creation complete after 12s [id=i-0c8ebfbd84376417c]
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+    
+    Outputs:
+    ec2_public_ip = "3.79.21.47"
+
+    root@PC:~/modules/terraform (feature/EC2)# ssh ec2-user@3.79.21.47
+    ...
+    [ec2-user@ip-10-0-10-134 ~]$ exit
+    logout
+    Connection to 3.79.21.47 closed.
+
+    root@PC:~/modules/terraform (feature/EC2)# ssh ec2-user@3.79.21.47
+    ...
+    [ec2-user@ip-10-0-10-134 ~]$ docker ps
+    CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS                                   NAMES
+    a25a61191afb   nginx     "/docker-entrypoint.…"   39 seconds ago   Up 37 seconds   0.0.0.0:8080->80/tcp, :::8080->80/tcp   pedantic_wiles
+```
+#### Accessed nginx through Browser
+Confirmed the successful deployment and correct Security Group network configurations by accessing the Nginx default landing page via a web browser using the dynamically provisioned EC2 instance's public IP address.
+
+<img width="1344" height="315" alt="image" src="https://github.com/user-attachments/assets/348edfb5-4007-419a-9f96-7bf693536620" />
+
+
+
  
 </details>
 
