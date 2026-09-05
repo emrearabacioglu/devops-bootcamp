@@ -1076,17 +1076,98 @@ Executed an automated deployment of the declared infrastructure. Validated that 
 <summary>Variables</summary>
  <br />
  
- **content will be here**
- 
-</details>
+ ### Demo Executed: Terraform Variable Management and Credential Security
 
-******
 
-<details>
-<summary>Environment Variables</summary>
- <br />
- 
- **content will be here**
+#### Restricted Value of Variable by Defining a Type
+Refactored the infrastructure code to utilize variables instead of hardcoded values. Enforced strict data structures by defining variable types (e.g., `list(string)` and `list(object)`). Validated this restriction by intentionally passing an incompatible data type, triggering Terraform's type constraint validation, before correcting it to an object array.
+```bash
+    root@PC:~/modules/terraform# cat terraform-dev.tfvars
+    cidr_blocks = ["10.0.0.0/16", "10.0.10.0/24"]
+    
+    root@PC:~/modules/terraform# terraform apply -var-file terraform-dev.tfvars
+    ╷
+    │ Error: Invalid default value for variable
+    │
+    │   on main.tf line 9, in variable "cidr_blocks":
+    │    9:     default = "10.0.10.0/24"
+    │
+    │ This default value is not compatible with the variable's type constraint: list of string required, but have
+    │ string.
+    ╵
+```
+#### Passed Variables in Multiple Ways (Files & Environments)
+Resolved the type constraint error by restructuring the variables into a complex `list(object)` structure. Demonstrated variable injection by passing a dedicated environment-specific configuration file (`terraform-dev.tfvars`) via the CLI flag, ensuring clean and reusable code.
+```bash
+    root@PC:~/modules/terraform# cat main.tf
+    # ... [Provider block hidden] ...
+    
+    variable "cidr_blocks" {
+        description = "cidr blocks for vps and subnets"
+        type = list(object({
+            cidr_block = string
+            name = string
+        }))
+    }
+    
+    resource "aws_vpc" "development-vpc" {
+        cidr_block = var.cidr_blocks[0].cidr_block
+        tags = {
+            Name: var.cidr_blocks[0].name
+        }
+    }
+    # ... [Subnet resource utilizing var.cidr_blocks[1] hidden] ...
+    
+    root@PC:~/modules/terraform# cat terraform-dev.tfvars
+    cidr_blocks = [
+        {cidr_block = "10.0.0.0/16", name = "dev-vpc"},
+        {cidr_block ="10.0.10.0/24", name = "dev-subent"}
+    ]
+    
+    root@PC:~/modules/terraform# terraform apply -var-file terraform-dev.tfvars
+    ...
+    aws_subnet.dev-subnet-1: Creating...
+    aws_subnet.dev-subnet-1: Creation complete after 0s [id=subnet-0210999dc3fc7fc4b]
+    
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+```
+#### Used Environment Variables to Extract AWS Credentials
+To adhere to security best practices, hardcoded AWS Access Keys and Secret Keys were stripped from the `main.tf` provider block. Authenticated the deployment dynamically by extracting temporary credentials directly from the host's secure environment variables (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`). 
+```bash
+    root@PC:~/modules/terraform# export AWS_SECRET_ACCESS_KEY=xxx
+    root@PC:~/modules/terraform# export AWS_ACCESS_KEY_ID=xxx
+    
+    root@PC:~/modules/terraform# terraform apply -var-file terraform-dev.tfvars
+    aws_vpc.development-vpc: Refreshing state... [id=vpc-0e7925ca7de335498]
+    aws_subnet.dev-subnet-1: Refreshing state... [id=subnet-0210999dc3fc7fc4b]
+    
+    Terraform used the selected providers to generate the following execution plan...
+    Plan: 0 to add, 2 to change, 0 to destroy.
+```
+#### Set Variable Using TF_VAR_name Environment Variable
+Demonstrated a third method of variable injection by utilizing Terraform's native `TF_VAR_` environment variable prefix. Dynamically controlled the AWS Availability Zone targeting by updating the system environment, successfully forcing a state replacement (from `eu-central-1a` to `eu-central-1b`) without altering any configuration files.
+```bash
+    root@PC:~/modules/terraform# export TF_VAR_availability_zone="eu-central-1a"
+    root@PC:~/modules/terraform# terraform apply -var-file terraform-dev.tfvars
+    ...
+    No changes. Your infrastructure matches the configuration.
+    
+    root@PC:~/modules/terraform# export TF_VAR_availability_zone="eu-central-1b"
+    root@PC:~/modules/terraform# terraform apply -var-file terraform-dev.tfvars
+    ...
+      # aws_subnet.dev-subnet-1 must be replaced
+    -/+ resource "aws_subnet" "dev-subnet-1" {
+          ~ arn                                            = "arn:aws:ec2:eu-central-1:731872836472:subnet/subnet-0210999dc3fc7fc4b" -> (known after apply)
+          ~ availability_zone                              = "eu-central-1a" -> "eu-central-1b" # forces replacement
+    ...
+    aws_subnet.dev-subnet-1: Destroying... [id=subnet-0210999dc3fc7fc4b]
+    aws_subnet.dev-subnet-1: Destruction complete after 1s
+    aws_subnet.dev-subnet-1: Creating...
+    aws_subnet.dev-subnet-1: Creation complete after 1s [id=subnet-0ac4e9b5390417f7b]
+    
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+
+```
  
 </details>
 
