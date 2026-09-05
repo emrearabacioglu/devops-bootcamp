@@ -946,7 +946,127 @@ Utilized the built-in Terraform state management utilities to audit the active e
 <summary>Terraform Output</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: Defining and Retrieving Terraform Output Values
+
+
+#### Defined Output Values in Configuration
+Authored the `main.tf` configuration file to provision a Virtual Private Cloud (VPC) and a Subnet. Appended specific `output` blocks to the configuration to explicitly extract and expose the dynamically generated AWS resource IDs (`dev-vpc-id` and `dev-subnet-id`) to the console upon deployment.
+
+```bash
+    root@PC:~/modules/terraform# cat main.tf
+    provider "aws" {
+        region = "eu-central-1"
+        access_key = "xxx"
+        secret_key = "xxx"
+    }
+    
+    resource "aws_vpc" "development-vpc" {
+        cidr_block = "10.0.0.0/16"
+        tags = {
+            Name: "development"
+        }
+    }
+    
+    resource "aws_subnet" "dev-subnet-1" {
+        vpc_id = aws_vpc.development-vpc.id
+        cidr_block = "10.0.10.0/24"
+        availability_zone = "eu-central-1a"
+        tags = {
+            Name: "subnet-1-dev"
+        }
+    }
+    
+    output "dev-vpc-id"{
+        value = aws_vpc.development-vpc.id
+    }
+    
+    output "dev-subnet-id"{
+        value = aws_subnet.dev-subnet-1.id
+    }
+```
+
+#### Applied Configuration and Extracted Outputs
+Executed an automated deployment of the declared infrastructure. Validated that Terraform successfully created the AWS resources and parsed the output variables, printing the exact AWS assigned resource IDs (`vpc-0e7925ca7de335498` and `subnet-0ee36142d5bbbb3de`) directly to the terminal output for immediate reference.
+```bash
+    root@PC:~/modules/terraform# terraform apply --auto-approve
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+    the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-1 will be created
+      + resource "aws_subnet" "dev-subnet-1" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "10.0.10.0/24"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags                                           = {
+              + "Name" = "subnet-1-dev"
+            }
+          + tags_all                                       = {
+              + "Name" = "subnet-1-dev"
+            }
+          + vpc_id                                         = (known after apply)
+        }
+    
+      # aws_vpc.development-vpc will be created
+      + resource "aws_vpc" "development-vpc" {
+          + arn                                  = (known after apply)
+          + cidr_block                           = "10.0.0.0/16"
+          + default_network_acl_id               = (known after apply)
+          + default_route_table_id               = (known after apply)
+          + default_security_group_id            = (known after apply)
+          + dhcp_options_id                      = (known after apply)
+          + enable_dns_hostnames                 = (known after apply)
+          + enable_dns_support                   = true
+          + enable_network_address_usage_metrics = (known after apply)
+          + id                                   = (known after apply)
+          + instance_tenancy                     = "default"
+          + ipv6_association_id                  = (known after apply)
+          + ipv6_cidr_block                      = (known after apply)
+          + ipv6_cidr_block_network_border_group = (known after apply)
+          + main_route_table_id                  = (known after apply)
+          + owner_id                             = (known after apply)
+          + region                               = "eu-central-1"
+          + tags                                 = {
+              + "Name" = "development"
+            }
+          + tags_all                             = {
+              + "Name" = "development"
+            }
+        }
+    
+    Plan: 2 to add, 0 to change, 0 to destroy.
+    
+    Changes to Outputs:
+      + dev-subnet-id = (known after apply)
+      + dev-vpc-id    = (known after apply)
+    aws_vpc.development-vpc: Creating...
+    aws_vpc.development-vpc: Creation complete after 2s [id=vpc-0e7925ca7de335498]
+    aws_subnet.dev-subnet-1: Creating...
+    aws_subnet.dev-subnet-1: Creation complete after 0s [id=subnet-0ee36142d5bbbb3de]
+    
+    Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+    
+    Outputs:
+    
+    dev-subnet-id = "subnet-0ee36142d5bbbb3de"
+    dev-vpc-id = "vpc-0e7925ca7de335498"
+```
  
 </details>
 
