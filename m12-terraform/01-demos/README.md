@@ -1466,8 +1466,138 @@ Pivoted the security architecture from a custom group to managing the VPC's nati
 <summary>Demo Project 1: Automate your AWS Infrastructure - Part 2</summary>
  <br />
  
- **content will be here**
- 
+ ### Demo Executed: Automated EC2 Provisioning and SSH Key Management
+
+
+#### Created EC2 Instance (Manual Key Pair Approach)
+Demonstrated the deployment of an EC2 instance (`t2.micro`) utilizing an Amazon Machine Image (AMI). Initially, the workflow relied on a manually generated SSH key pair (`server-key-pair.pem`) downloaded directly from the AWS Console. 
+
+To ensure SSH client compatibility and enforce security best practices, the permissions on the downloaded private key were strictly locked down using standard Linux file permission protocols.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# ls ~/.ssh/server-key-pair.pem
+    /root/.ssh/server-key-pair.pem
+    root@PC:~/modules/terraform (feature/EC2)# chmod 400 ~/.ssh/server-key-pair.pem
+    root@PC:~/modules/terraform (feature/EC2)# ls -l ~/.ssh/server-key-pair.pem
+    -r-------- 1 root root 1678 Sep  5 21:00 /root/.ssh/server-key-pair.pem
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    aws_instance.myapp-server: Creating...
+    aws_instance.myapp-server: Still creating... [00m10s elapsed]
+    aws_instance.myapp-server: Creation complete after 13s [id=i-06ca00864feabd5a8]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+#### SSH into EC2 Instance (Manual Key)
+Validated the infrastructure configuration and network connectivity by successfully establishing a secure shell (SSH) session into the newly provisioned Amazon Linux 2023 server using the manually downloaded `.pem` key.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# ssh -i ~/.ssh/server-key-pair.pem ec2-user@18.192.8.225
+    The authenticity of host '18.192.8.225 (18.192.8.225)' can't be established.
+    ED25519 key fingerprint is SHA256:4jQZsvFbwQg80vSiK0YNniKkZj3t/In4CCjv2qZr1AI.
+    This key is not known by any other names.
+    Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+    Warning: Permanently added '18.192.8.225' (ED25519) to the list of known hosts.
+       ,     #_
+       ~\_  ####_        Amazon Linux 2023
+    ...
+    [ec2-user@ip-10-0-10-185 ~]$ exit
+    logout
+    Connection to 18.192.8.225 closed.
+```
+#### Configured SSH Key Pair in Terraform Config File
+Refactored the infrastructure code to fully automate the SSH key lifecycle, eliminating the need for manual AWS Console interactions. Integrated the `aws_key_pair` resource into the Terraform configuration, pointing it to a pre-existing local public key (`id_rsa.pub`).
+
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    # ... [Networking and Security Group configurations hidden] ...
+    
+    data "aws_ami" "latest-amazon-linux-image" {
+        most_recent = true
+        owners = ["amazon"]
+        filter {
+            name = "name"
+            values = ["al2023-ami-2023.*-x86_64"]
+        }
+        filter{
+            name = "virtualization-type"
+            values = ["hvm"]
+        }
+    }
+    
+    resource "aws_key_pair" "ssh-key" {
+        key_name = "server-key"
+        public_key = file(var.public_key_location)
+    }
+    
+    resource "aws_instance" "myapp-server" {
+        ami = data.aws_ami.latest-amazon-linux-image.id
+        instance_type = var.instance_type
+    
+        subnet_id = aws_subnet.myapp-subnet-1.id
+        vpc_security_group_ids = [aws_default_security_group.default-sg.id]
+        availability_zone = var.avail_zone
+    
+        associate_public_ip_address = true
+        key_name = aws_key_pair.ssh-key.key_name
+    
+        tags = {
+            Name: "${var.env_prefix}-server"
+        }
+    }
+```
+
+#### Created EC2 Instance (Automated Key Pair)
+Applied the updated configuration. Terraform detected the change in the `key_name` attribute and enforced an infrastructure replacement (destroy and re-create). The new EC2 instance was successfully provisioned and bound to the automatically generated, Terraform-managed SSH key pair.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Terraform will perform the following actions:
+    
+      # aws_instance.myapp-server must be replaced
+    -/+ resource "aws_instance" "myapp-server" {
+    ...
+          ~ key_name                             = "server-key-pair" -> "server-key" # forces replacement
+    ...
+      # aws_key_pair.ssh-key will be created
+      + resource "aws_key_pair" "ssh-key" {
+          + key_name        = "server-key"
+          + public_key      = "ssh-rsa AAAAB3NzaC1yc...[TRUNCATED]...root@PC"
+    ...
+    Plan: 2 to add, 0 to change, 1 to destroy.
+    aws_instance.myapp-server: Destroying... [id=i-06ca00864feabd5a8]
+    aws_instance.myapp-server: Destruction complete after 20s
+    aws_key_pair.ssh-key: Creating...
+    aws_key_pair.ssh-key: Creation complete after 0s [id=server-key]
+    aws_instance.myapp-server: Creating...
+    aws_instance.myapp-server: Creation complete after 13s [id=i-03ad6fbe423be3bde]
+    
+    Apply complete! Resources: 2 added, 0 changed, 1 destroyed.
+    ```
+
+#### SSH into EC2 Instance (Automated Key)
+Successfully accessed the newly recreated server using the locally generated default RSA key. Verified that the automated key injection worked flawlessly by executing an SSH connection without explicitly passing the `-i` flag (as the SSH agent automatically utilizes default keys like `id_rsa`). Afterward, the legacy, manually downloaded `.pem` key was securely removed from the local filesystem.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# terraform state show aws_instance.myapp-server
+    # ... [State output confirming public IP: 35.157.195.225] ...
+    
+    root@PC:~/modules/terraform (feature/EC2)# ssh -i ~/.ssh/id_rsa ec2-user@35.157.195.225
+    ...
+    [ec2-user@ip-10-0-10-105 ~]$ exit
+    logout
+    Connection to 35.157.195.225 closed.
+    
+    root@PC:~/modules/terraform (feature/EC2)# ssh ec2-user@35.157.195.225
+    ...
+    Last login: Sat Sep  5 18:22:33 2026 from 195.174.91.91
+    [ec2-user@ip-10-0-10-105 ~]$ exit
+    logout
+    Connection to 35.157.195.225 closed.
+    
+    root@PC:~/modules/terraform (feature/EC2)# rm ~/.ssh/server-key-pair.pem
+```
+ <img width="1905" height="927" alt="image" src="https://github.com/user-attachments/assets/0db12caa-d5f5-477e-aaec-b77d1ef9698c" />
+<img width="1909" height="404" alt="image" src="https://github.com/user-attachments/assets/70dd2aec-28e6-4274-a35b-bfe648b36bd6" />
+
 </details>
 
 ******
