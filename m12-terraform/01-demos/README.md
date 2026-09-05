@@ -1252,7 +1252,211 @@ branch 'master' set up to track 'origin/master'.
 <summary>Demo Project 1: Automate your AWS Infrastructure - Part 1</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: AWS VPC Networking and Security Configuration
+
+
+
+#### Created VPC & Subnet
+Defined and provisioned a custom Virtual Private Cloud (VPC) alongside a Subnet using dynamically injected variables for CIDR blocks and environment prefixes. The deployment automatically cleared outdated infrastructure and established the new targeted networking foundation.
+
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    provider "aws" {
+        region = "eu-central-1"
+    }
+    
+    variable vpc_cidr_block {}
+    variable subnet_cidr_block {}
+    variable avail_zone {}
+    variable env_prefix {}
+    
+    resource "aws_vpc" "myapp-vpc" {
+        cidr_block = var.vpc_cidr_block
+        tags = {
+            Name: "${var.env_prefix}-vpc"
+        }
+    }
+    
+    resource "aws_subnet" "myapp-subnet-1" {
+        vpc_id = aws_vpc.myapp-vpc.id
+        cidr_block = var.subnet_cidr_block
+        availability_zone = var.avail_zone
+        tags = {
+            Name: "${var.env_prefix}-subnet-1"
+        }
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 2 to add, 0 to change, 2 to destroy.
+    aws_subnet.dev-subnet-1: Destroying... [id=subnet-0ac4e9b5390417f7b]
+    aws_vpc.myapp-vpc: Creating...
+    aws_subnet.dev-subnet-1: Destruction complete after 1s
+    aws_vpc.development-vpc: Destroying... [id=vpc-0e7925ca7de335498]
+    aws_vpc.development-vpc: Destruction complete after 0s
+    aws_vpc.myapp-vpc: Creation complete after 1s [id=vpc-01cb698649ba9cb82]
+    aws_subnet.myapp-subnet-1: Creating...
+    aws_subnet.myapp-subnet-1: Creation complete after 1s [id=subnet-0d0c73d53c8304752]
+    
+    Apply complete! Resources: 2 added, 0 changed, 2 destroyed.
+```
+<img width="1704" height="835" alt="image" src="https://github.com/user-attachments/assets/34e98593-d13c-4717-97f0-5cfa558504ae" />
+
+<img width="1702" height="809" alt="image" src="https://github.com/user-attachments/assets/5e103ddf-82a3-4749-ad35-175f51f76661" />
+
+
+#### Created custom Route Table
+Provisioned an Internet Gateway (IGW) and attached it to the VPC. Subsequently, authored a custom Route Table configuring a default route (`0.0.0.0/0`) directed to the IGW to enable external internet connectivity.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    ...
+    resource "aws_route_table" "myapp-route-table" {
+        vpc_id = aws_vpc.myapp-vpc.id
+    
+        route{
+            cidr_block = "0.0.0.0/0"
+            gateway_id = aws_internet_gateway.myapp-igw.id
+        }
+        tags = {
+            Name: "${var.env_prefix}-rtb"
+        }
+    }
+    
+    resource "aws_internet_gateway" "myapp-igw" {
+        vpc_id = aws_vpc.myapp-vpc.id
+        tags = {
+            Name: "${var.env_prefix}-igw"
+        }
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 2 to add, 0 to change, 0 to destroy.
+    aws_internet_gateway.myapp-igw: Creating...
+    aws_internet_gateway.myapp-igw: Creation complete after 1s [id=igw-0cdf26ec1de16018d]
+    aws_route_table.myapp-route-table: Creating...
+    aws_route_table.myapp-route-table: Creation complete after 1s [id=rtb-0ecdf898f49754b61]
+    
+    Apply complete! Resources: 2 added, 0 changed, 0 destroyed.
+```
+<img width="1710" height="833" alt="image" src="https://github.com/user-attachments/assets/379b2d17-18cd-4ca7-8d85-e17488fdc22a" />
+
+
+#### Added Subnet Association with Route Table
+Explicitly bound the created subnet to the custom Route Table utilizing the `aws_route_table_association` resource, ensuring external traffic correctly routes through the defined Internet Gateway.
+
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    ...
+    resource "aws_route_table_association" "a-rtb-subnet" {
+        subnet_id = aws_subnet.myapp-subnet-1.id
+        route_table_id = aws_route_table.myapp-route-table.id
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    aws_route_table_association.a-rtb-subnet: Creating...
+    aws_route_table_association.a-rtb-subnet: Creation complete after 0s [id=rtbassoc-07c4ac24965795e66]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+<img width="1694" height="825" alt="image" src="https://github.com/user-attachments/assets/5f640689-588d-4002-8acb-8b06a15fca59" />
+
+
+#### Configured Default/Main Route Table
+Refactored the network routing strategy by deprecating the custom Route Table and explicit association in favor of managing the implicitly generated Default Route Table. Utilized the `aws_default_route_table` resource to assign the Internet Gateway directly to the main VPC route table.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    ...
+    /* Custom Route Table commented out */
+    
+    resource "aws_default_route_table" "main-rtb" {
+        default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
+    
+        route{
+            cidr_block = "0.0.0.0/0"
+            gateway_id = aws_internet_gateway.myapp-igw.id
+        }
+        tags = {
+            Name: "${var.env_prefix}-main-rtb"
+        }
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    aws_default_route_table.main-rtb: Creating...
+    aws_default_route_table.main-rtb: Creation complete after 0s [id=rtb-002936ab76ff4961e]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+<img width="1710" height="825" alt="image" src="https://github.com/user-attachments/assets/8e641332-408b-4a32-83cd-b26b83318f72" />
+
+#### Created Security Group
+Authored a custom Security Group to strictly control network traffic flow. Established inbound (ingress) rules for SSH (Port 22) restricted to a specific IP address and HTTP (Port 8080) open to the internet, while allowing all outbound (egress) traffic.
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# cat main.tf
+    ...
+    resource "aws_security_group" "myapp-sg" {
+        name = "myapp-sg"
+        vpc_id = aws_vpc.myapp-vpc.id
+    
+        ingress{
+            from_port = 22
+            to_port = 22
+            protocol = "TCP"
+            cidr_blocks = [var.my_ip]
+        }
+    
+        ingress{
+            from_port = 8080
+            to_port = 8080
+            protocol = "TCP"
+            cidr_blocks = ["0.0.0.0/0"]
+        }
+    
+        egress{
+            from_port = 0
+            to_port = 0
+            protocol = "-1"
+            cidr_blocks = ["0.0.0.0/0"]
+            prefix_list_ids = []
+        }
+    
+        tags = {
+            Name: "${var.env_prefix}-sg"
+        }
+    }
+
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    aws_security_group.myapp-sg: Creating...
+    aws_security_group.myapp-sg: Creation complete after 3s [id=sg-04a0b7384ea23fdfc]
+    
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+<img width="1704" height="635" alt="image" src="https://github.com/user-attachments/assets/664faf91-0c84-4953-8f86-5ebf540fe328" />
+
+
+#### Configured Default Security Group
+Pivoted the security architecture from a custom group to managing the VPC's natively generated Default Security Group. Deployed the `aws_default_security_group` resource, applying identical ingress and egress rulesets while maintaining a cleaner AWS resource inventory.
+
+<img width="1708" height="701" alt="image" src="https://github.com/user-attachments/assets/5e46d969-e203-46c8-a0b3-878d8277420d" />
+
+```bash
+    root@PC:~/modules/terraform (feature/EC2)# terraform apply --auto-approve
+    ...
+    Plan: 1 to add, 0 to change, 1 to destroy.
+    aws_security_group.myapp-sg: Destroying... [id=sg-04a0b7384ea23fdfc]
+    aws_default_security_group.default-sg: Creating...
+    aws_security_group.myapp-sg: Destruction complete after 1s
+    aws_default_security_group.default-sg: Creation complete after 2s [id=sg-0bc899b0d94188f99]
+    
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+```
+
  
 </details>
 
