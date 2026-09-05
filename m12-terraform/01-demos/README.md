@@ -733,7 +733,210 @@ Executed a comprehensive environment teardown. Initiated the global destroy comm
 <summary>Terraform State</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: Automated Provisioning and State Management
+
+#### Applied Config File Without Preview
+Demonstrated non-interactive infrastructure deployment by executing an automated apply command. Successfully provisioned a custom Virtual Private Cloud (VPC) alongside two distinct subnets (one in the custom VPC, one in the default VPC) without requiring manual execution prompts.
+
+    root@PC:~/modules/terraform# cat main.tf
+    provider "aws" {
+        region = "eu-central-1"
+        access_key = "xxx"
+        secret_key = "xxxx"
+    }
+    
+    resource "aws_vpc" "development-vpc" {
+        cidr_block = "10.0.0.0/16"
+        tags = {
+            Name: "development"
+        }
+    }
+    
+    resource "aws_subnet" "dev-subnet-1" {
+        vpc_id = aws_vpc.development-vpc.id
+        cidr_block = "10.0.10.0/24"
+        availability_zone = "eu-central-1a"
+        tags = {
+            Name: "subnet-1-dev"
+        }
+    }
+    
+    data "aws_vpc" "existing_vpc" {
+        default = true
+    }
+    
+    resource "aws_subnet" "dev-subnet-2" {
+        vpc_id = data.aws_vpc.existing_vpc.id
+        cidr_block = "172.31.48.0/20"
+        availability_zone = "eu-central-1a"
+        tags = {
+            Name: "subnet-2-default"
+        }
+    }
+    
+    root@PC:~/modules/terraform# terraform apply -auto-approve
+    data.aws_vpc.existing_vpc: Reading...
+    data.aws_vpc.existing_vpc: Read complete after 1s [id=vpc-0511d66bb75f2d673]
+    
+    Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with
+    the following symbols:
+      + create
+    
+    Terraform will perform the following actions:
+    
+      # aws_subnet.dev-subnet-1 will be created
+      + resource "aws_subnet" "dev-subnet-1" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "10.0.10.0/24"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags                                           = {
+              + "Name" = "subnet-1-dev"
+            }
+          + tags_all                                       = {
+              + "Name" = "subnet-1-dev"
+            }
+          + vpc_id                                         = (known after apply)
+        }
+    
+      # aws_subnet.dev-subnet-2 will be created
+      + resource "aws_subnet" "dev-subnet-2" {
+          + arn                                            = (known after apply)
+          + assign_ipv6_address_on_creation                = false
+          + availability_zone                              = "eu-central-1a"
+          + availability_zone_id                           = (known after apply)
+          + cidr_block                                     = "172.31.48.0/20"
+          + enable_dns64                                   = false
+          + enable_resource_name_dns_a_record_on_launch    = false
+          + enable_resource_name_dns_aaaa_record_on_launch = false
+          + id                                             = (known after apply)
+          + ipv6_cidr_block                                = (known after apply)
+          + ipv6_cidr_block_association_id                 = (known after apply)
+          + ipv6_native                                    = false
+          + map_public_ip_on_launch                        = false
+          + owner_id                                       = (known after apply)
+          + private_dns_hostname_type_on_launch            = (known after apply)
+          + region                                         = "eu-central-1"
+          + tags                                           = {
+              + "Name" = "subnet-2-default"
+            }
+          + tags_all                                       = {
+              + "Name" = "subnet-2-default"
+            }
+          + vpc_id                                         = "vpc-0511d66bb75f2d673"
+        }
+    
+      # aws_vpc.development-vpc will be created
+      + resource "aws_vpc" "development-vpc" {
+          + arn                                  = (known after apply)
+          + cidr_block                           = "10.0.0.0/16"
+          + default_network_acl_id               = (known after apply)
+          + default_route_table_id               = (known after apply)
+          + default_security_group_id            = (known after apply)
+          + dhcp_options_id                      = (known after apply)
+          + enable_dns_hostnames                 = (known after apply)
+          + enable_dns_support                   = true
+          + enable_network_address_usage_metrics = (known after apply)
+          + id                                   = (known after apply)
+          + instance_tenancy                     = "default"
+          + ipv6_association_id                  = (known after apply)
+          + ipv6_cidr_block                      = (known after apply)
+          + ipv6_cidr_block_network_border_group = (known after apply)
+          + main_route_table_id                  = (known after apply)
+          + owner_id                             = (known after apply)
+          + region                               = "eu-central-1"
+          + tags                                 = {
+              + "Name" = "development"
+            }
+          + tags_all                             = {
+              + "Name" = "development"
+            }
+        }
+    
+    Plan: 3 to add, 0 to change, 0 to destroy.
+    aws_subnet.dev-subnet-2: Creating...
+    aws_vpc.development-vpc: Creating...
+    aws_subnet.dev-subnet-2: Creation complete after 1s [id=subnet-0f84f579e64b837ff]
+    aws_vpc.development-vpc: Creation complete after 1s [id=vpc-047ff10c7a5f9ab73]
+    aws_subnet.dev-subnet-1: Creating...
+    aws_subnet.dev-subnet-1: Creation complete after 1s [id=subnet-0bd0a41afd6671e9d]
+    
+    Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+#### Inspected Terraform State
+Utilized the built-in Terraform state management utilities to audit the active environment. Extracted a high-level inventory of all managed entities and executed targeted queries to expose the underlying attributes, Amazon Resource Names (ARNs), and assigned tags for a specific deployed subnet instance.
+
+    root@PC:~/modules/terraform# terraform state
+    Usage: terraform [global options] state <subcommand> [options] [args]
+    ...
+    Subcommands:
+        identities      List the identities of resources in the state
+        list            List resources in the state
+        mv              Move an item in the state
+        pull            Pull current state and output to stdout
+        push            Update remote state from a local state file
+        replace-provider    Replace provider in the state
+        rm              Remove instances from the state
+        show            Show a resource in the state
+    
+    root@PC:~/modules/terraform# terraform state list
+    data.aws_vpc.existing_vpc
+    aws_subnet.dev-subnet-1
+    aws_subnet.dev-subnet-2
+    aws_vpc.development-vpc
+    
+    root@PC:~/modules/terraform# terraform state show
+    ╷
+    │ Error: Required argument missing
+    │
+    │ Exactly one argument expected: the address of a resource instance to show.
+    ╵
+    
+    root@PC:~/modules/terraform# terraform state show aws_subnet.dev-subnet-1
+    # aws_subnet.dev-subnet-1:
+    resource "aws_subnet" "dev-subnet-1" {
+        arn                                            = "arn:aws:ec2:eu-central-1:731872836472:subnet/subnet-0bd0a41afd6671e9d"
+        assign_ipv6_address_on_creation                = false
+        availability_zone                              = "eu-central-1a"
+        availability_zone_id                           = "euc1-az2"
+        cidr_block                                     = "10.0.10.0/24"
+        customer_owned_ipv4_pool                       = null
+        enable_dns64                                   = false
+        enable_lni_at_device_index                     = 0
+        enable_resource_name_dns_a_record_on_launch    = false
+        enable_resource_name_dns_aaaa_record_on_launch = false
+        id                                             = "subnet-0bd0a41afd6671e9d"
+        ipv6_cidr_block                                = null
+        ipv6_cidr_block_association_id                 = null
+        ipv6_native                                    = false
+        map_customer_owned_ip_on_launch                = false
+        map_public_ip_on_launch                        = false
+        outpost_arn                                    = null
+        owner_id                                       = "731872836472"
+        private_dns_hostname_type_on_launch            = "ip-name"
+        region                                         = "eu-central-1"
+        tags                                           = {
+            "Name" = "subnet-1-dev"
+        }
+        tags_all                                       = {
+            "Name" = "subnet-1-dev"
+        }
+        vpc_id                                         = "vpc-047ff10c7a5f9ab73"
+    }
+
+
  
 </details>
 
