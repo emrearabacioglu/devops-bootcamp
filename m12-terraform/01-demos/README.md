@@ -1177,7 +1177,72 @@ Demonstrated a third method of variable injection by utilizing Terraform's nativ
 <summary>Initialize Git Repository</summary>
  <br />
  
- **content will be here**
+ ```bash
+root@PC:~/modules/terraform# git init
+...
+Initialized empty Git repository in /root/modules/terraform/.git/
+root@PC:~/modules/terraform# git remote add origin https://github.com/emrearabacioglu/terraform.git
+root@PC:~/modules/terraform# git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        .terraform.lock.hcl
+        .terraform/
+        main.tf
+        providers.tf
+        terraform-dev.tfvars
+        terraform.tfstate
+        terraform.tfstate.backup
+
+nothing added to commit but untracked files present (use "git add" to track)
+root@PC:~/modules/terraform# git status
+On branch master
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        .gitignore
+        .terraform.lock.hcl
+        main.tf
+        providers.tf
+
+nothing added to commit but untracked files present (use "git add" to track)
+root@PC:~/modules/terraform# git add .
+root@PC:~/modules/terraform# git commit -m "initial"
+[master (root-commit) dd3d558] initial
+ Committer: root <root@PC.localdomain>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 4 files changed, 97 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 .terraform.lock.hcl
+ create mode 100644 main.tf
+ create mode 100644 providers.tf
+root@PC:~/modules/terraform# git push -u origin master
+Enumerating objects: 6, done.
+Counting objects: 100% (6/6), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (6/6), done.
+Writing objects: 100% (6/6), 2.19 KiB | 2.19 MiB/s, done.
+Total 6 (delta 0), reused 0 (delta 0), pack-reused 0
+To https://github.com/emrearabacioglu/terraform.git
+ * [new branch]      master -> master
+branch 'master' set up to track 'origin/master'.
+
+```
  
 </details>
 
