@@ -1720,7 +1720,89 @@ Confirmed the successful deployment and correct Security Group network configura
 <summary>Provisioners</summary>
  <br />
  
- **content will be here**
+ ### Demo Executed: Automating Operations with Terraform Provisioners
+
+
+#### Used “remote-exec” provisioner
+Demonstrated the execution of inline commands directly on a newly provisioned EC2 instance using the `remote-exec` provisioner. Since Terraform provisioners only run during resource creation, the `-replace` flag was utilized to force the destruction and recreation of the existing instance. The connection was successfully established via SSH within Terraform, and the inline command successfully created a new directory (`newdir`) on the remote server, which was subsequently verified via a manual SSH session.
+```bash
+    root@PC:~/modules/terraform (feature/provisioners)# terraform apply -replace="aws_instance.myapp-server"
+    ...
+    Terraform will perform the following actions:
+    
+      # aws_instance.myapp-server will be replaced, as requested
+    -/+ resource "aws_instance" "myapp-server" {
+    ...
+    aws_instance.myapp-server: Destroying... [id=i-0c8ebfbd84376417c]
+    aws_instance.myapp-server: Destruction complete after 30s
+    aws_instance.myapp-server: Creating...
+    aws_instance.myapp-server: Still creating... [00m10s elapsed]
+    aws_instance.myapp-server: Provisioning with 'remote-exec'...
+    aws_instance.myapp-server (remote-exec): Connecting to remote host via SSH...
+    aws_instance.myapp-server (remote-exec):   Host: 18.199.152.174
+    aws_instance.myapp-server (remote-exec):   User: ec2-user
+    aws_instance.myapp-server (remote-exec):   Password: false
+    aws_instance.myapp-server (remote-exec):   Private key: true
+    ...
+    aws_instance.myapp-server (remote-exec): Connected!
+    aws_instance.myapp-server: Creation complete after 19s [id=i-0cd8a7993b65908ea]
+    
+    Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+    
+    Outputs:
+    aws_ami_id = "ami-030f85e68f5db92a9"
+    ec2_public_ip = "18.199.152.174"
+
+    root@PC:~/modules/terraform (feature/provisioners)# ssh ec2-user@18.199.152.174
+    ...
+    [ec2-user@ip-10-0-10-131 ~]$ ls
+    newdir
+    [ec2-user@ip-10-0-10-131 ~]$ exit
+    logout
+    Connection to 18.199.152.174 closed.
+```
+#### Used “file” provisioner
+Configured the `file` provisioner to securely copy assets from the local host machine to the newly created remote EC2 instance. This eliminates the need for manual secure copy (SCP) commands. The configuration specified copying the local `entry-script.sh` directly into the remote `ec2-user` home directory.
+```bash
+    root@PC:~/modules/terraform (feature/provisioners)# cat main.tf
+    ...
+    resource "aws_instance" "myapp-server" {
+    ...
+        connection {
+            type = "ssh"
+            host = self.public_ip
+            user = "ec2-user"
+            private_key = file(var.private_key_location)
+        }
+    
+        provisioner "file" {
+            source = "entry-script.sh"
+            destination = "/home/ec2-user/entry-script-on-ec2.sh"
+        }
+    ...
+```
+#### Used “local-exec” provisioner
+Configured the `local-exec` provisioner to trigger a local script execution on the host machine running Terraform immediately after the resource creation. This was utilized to extract the dynamically generated EC2 public IP address and pipe it directly into a local text file (`output.txt`) for immediate reference or downstream automation usage. 
+
+Additionally, the `remote-exec` script functionality was configured alongside it to run the file previously uploaded by the `file` provisioner.
+```bash
+    root@PC:~/modules/terraform (feature/provisioners)# cat main.tf
+    ...
+    resource "aws_instance" "myapp-server" {
+    ...
+        provisioner "remote-exec" {
+            script = "entry-script.sh"
+        }
+    
+        provisioner "local-exec" {
+            command = "echo ${self.public_ip} > output.txt"
+        }
+    
+        tags = {
+            Name: "${var.env_prefix}-server"
+        }
+    }
+```
  
 </details>
 
