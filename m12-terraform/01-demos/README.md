@@ -1967,30 +1967,194 @@ Reinitialized the Terraform backend to register the newly created modules. Deplo
 ******
 
 <details>
-<summary>Demo Project 2: Terraform & AWS EKS - Part 1</summary>
+<summary>Demo Project 2: Terraform & AWS EKS</summary>
  <br />
  
- **content will be here**
- 
-</details>
+ ### Demo Executed: Provisioning EKS Architecture and Deploying Kubernetes Applications
 
-******
+#### Created the VPC by using the VPC module
+Provisioned the foundational network infrastructure on AWS using the official `terraform-aws-modules/vpc/aws` module. The configuration dynamically generated public and private subnets across multiple availability zones, enabled NAT gateways, and applied mandatory Kubernetes tags (`kubernetes.io/role/elb` and `kubernetes.io/cluster/...`) required for Load Balancer integrations.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# cat vpc.tf
+    ...
+    module "myapp-vpc" {
+      source  = "terraform-aws-modules/vpc/aws"
+      version = "6.7.2"
+    
+      name = "myapp-vpc"
+      cidr = var.vpc_cidr_block
+      private_subnets = var.private_subnet_cidr_blocks
+      public_subnets = var.public_subnet_cidr_blocks
+      azs = data.aws_availability_zones.azs.names
+    
+      enable_nat_gateway = true
+      single_nat_gateway = true
+      enable_dns_hostnames = true
+    
+      tags = {
+        "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+      }
+    
+      public_subnet_tags = {
+        "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+        "kubernetes.io/role/elb" = 1
+      }
+    
+      private_subnet_tags = {
+        "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+        "kubernetes.io/role/internal-elb" = 1
+      }
+    }
+```
 
-<details>
-<summary>Demo Project 2: Terraform & AWS EKS - Part 2</summary>
- <br />
- 
- **content will be here**
- 
-</details>
+#### Created the EKS cluster and worker nodes by using the EKS module
+Deployed the Elastic Kubernetes Service (EKS) cluster utilizing the `terraform-aws-modules/eks/aws` module. Configured a managed node group (`dev`) utilizing `t2.small` instances and explicitly attached it to the previously created VPC and private subnets. Enabled cluster creator admin permissions and integrated essential add-ons (CoreDNS, kube-proxy, vpc-cni). 
+```bash
+    root@PC:~/modules/terraform (feature/eks)# cat eks-cluster.tf
+    module "eks" {
+      source  = "terraform-aws-modules/eks/aws"
+      version = "21.25.0"
+    
+      name = "myapp-eks-cluster"
+      kubernetes_version = "1.33"
+    
+      subnet_ids = module.myapp-vpc.private_subnets
+      vpc_id = module.myapp-vpc.vpc_id
+    
+      endpoint_public_access = true
+      enable_cluster_creator_admin_permissions = true
+    ...
+      eks_managed_node_groups = {
+        dev = {
+          ami_type       = "AL2023_x86_64_STANDARD"
+          instance_types = ["t2.small"]
+    
+          min_size     = 1
+          max_size     = 3
+          desired_size = 3
+        }
+      }
+    }
+```
+#### Applied configurations
+Initialized the Terraform backend and successfully executed the configuration, resulting in the creation of 62 AWS resources including the VPC, subnets, NAT gateways, EKS cluster, node groups, and IAM roles.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# terraform apply --auto-approve
+    ...
+    module.eks.aws_eks_cluster.this[0]: Creation complete after 7m55s [id=myapp-eks-cluster]
+    ...
+    module.eks.module.eks_managed_node_group["dev"].aws_eks_node_group.this[0]: Creation complete after 1m48s [id=myapp-eks-cluster:dev-f0cb57967fd66cb58d0c4e27ff]
+    ...
+    Apply complete! Resources: 62 added, 0 changed, 0 destroyed.
+```
+<img width="1706" height="831" alt="image" src="https://github.com/user-attachments/assets/dbcea9c7-e5ad-4f9e-b3a4-1af38ece890f" />
+<img width="1708" height="515" alt="image" src="https://github.com/user-attachments/assets/3043e9b5-37f3-4fee-a4e7-7fd7dd185810" />
+<img width="1700" height="371" alt="image" src="https://github.com/user-attachments/assets/0896ec69-bf4f-401c-adfe-fd96fe6aaf43" />
+<img width="1708" height="727" alt="image" src="https://github.com/user-attachments/assets/bd721718-a254-4f6d-85fe-d2696a0a3a98" />
+<img width="1708" height="819" alt="image" src="https://github.com/user-attachments/assets/083dfc5d-48fe-4cd8-b814-58958950c30e" />
+<img width="1698" height="819" alt="image" src="https://github.com/user-attachments/assets/258e0495-3f51-4112-8f05-e3a2d68d84e8" />
 
-******
 
-<details>
-<summary>Demo Project 2: Terraform & AWS EKS - Part 3</summary>
- <br />
- 
- **content will be here**
+#### Configured Kubernetes provider to authenticate with K8s cluster
+Updated the local `kubeconfig` file using the AWS CLI to establish secure communication with the newly provisioned EKS cluster. Verified the authentication and node readiness status via `kubectl`.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# aws eks update-kubeconfig --name myapp-eks-cluster --region eu-central-1
+    Added new context arn:aws:eks:eu-central-1:731872836472:cluster/myapp-eks-cluster to /root/.kube/config
+    
+    root@PC:~/modules/terraform (feature/eks)# kubectl get node
+    NAME                                          STATUS   ROLES    AGE   VERSION
+    ip-10-0-1-175.eu-central-1.compute.internal   Ready    <none>   50m   v1.33.13-eks-cb19647
+    ip-10-0-2-147.eu-central-1.compute.internal   Ready    <none>   50m   v1.33.13-eks-cb19647
+    ip-10-0-3-48.eu-central-1.compute.internal    Ready    <none>   50m   v1.33.13-eks-cb19647
+```
+#### Deployed nginx Application/Pod
+Deployed a highly available Nginx application onto the EKS cluster using a YAML manifest containing a Deployment (2 replicas) and a Service mapped to an AWS Classic/Network Load Balancer. Confirmed the successful execution and retrieved the external DNS endpoint of the Load Balancer.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# cat nginx-config.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+      namespace: dev
+      labels:
+        app: nginx
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: nginx
+          profile: fargate
+      template:
+        metadata:
+          labels:
+            app: nginx
+            profile: fargate
+        spec:
+          containers:
+          - name: nginx
+            image: nginx
+            ports:
+            - containerPort: 80
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 80
+      selector:
+        app: nginx
+      type: LoadBalancer
+
+    root@PC:~/modules/terraform (feature/eks)# kubectl apply -f./nginx-config.yaml
+    deployment.apps/nginx created
+    service/nginx configured
+
+    root@PC:~/modules/terraform (feature/eks)# kubectl get pod
+    NAME                     READY   STATUS    RESTARTS   AGE
+    nginx-86c57bc6b8-mxkbd   1/1     Running   0          12s
+    
+    root@PC:~/modules/terraform (feature/eks)# kubectl get svc
+    NAME         TYPE           CLUSTER-IP     EXTERNAL-IP                                                              PORT(S)        AGE
+    kubernetes   ClusterIP      172.20.0.1     <none>                                                                   443/TCP        71m
+    nginx        LoadBalancer   172.20.3.243   a9e4950619e104317bd888cf6839b22f-825226598.eu-central-1.elb.amazonaws.com   80:31956/TCP   12m
+```
+
+<img width="1708" height="807" alt="image" src="https://github.com/user-attachments/assets/7641e6f9-83de-4142-a6e2-9431e78cd34c" />
+<img width="1708" height="401" alt="image" src="https://github.com/user-attachments/assets/ecbc4483-dd23-4fb1-84d2-3a8967b43242" />
+
+
+
+#### Terraform destroy
+Initiated the teardown of the infrastructure. Addressed a cloud lifecycle edge case where Kubernetes-provisioned AWS resources (Load Balancers and Elastic Network Interfaces) created outside of Terraform's state caused a `DependencyViolation`, preventing the VPC and subnets from being destroyed.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# terraform destroy
+    ...
+    module.myapp-vpc.aws_vpc.this[0]: Still destroying... [id=vpc-0436e4eb7b3668acb, 12m52s elapsed]
+    ^C
+    Interrupt received.
+    ...
+    Error: deleting EC2 VPC (vpc-0436e4eb7b3668acb): operation error EC2: DeleteVpc, https response error StatusCode: 400, RequestID: 2105439e-1511-4369-bed0-736ad2d3ca2f, api error DependencyViolation: The vpc 'vpc-0436e4eb7b3668acb' has dependencies and cannot be deleted.
+```
+
+After resolving the orphaned dependencies manually via the AWS Console, the final `terraform destroy` command was executed to ensure the state file was completely synchronized and empty.
+```bash
+    root@PC:~/modules/terraform (feature/eks)# terraform destroy --auto-approve
+    ...
+    No changes. No objects need to be destroyed.
+    Either you have not created any objects yet or the existing objects were already deleted outside of Terraform.
+    Destroy complete! Resources: 0 destroyed.
+    
+    root@PC:~/modules/terraform (feature/eks)# terraform state list
+    root@PC:~/modules/terraform (feature/eks)#
+```
+
  
 </details>
 
