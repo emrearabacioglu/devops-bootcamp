@@ -2487,17 +2487,93 @@ Validated the operational status of the EC2 instance by establishing a remote co
 <summary>Terraform Remote State</summary>
  <br />
  
- **content will be here**
- 
-</details>
+ ### Demo Executed: Configured Remote Storage
 
-******
+#### Infrastructure Teardown & Preparation
+Prior to configuring remote state storage, the existing Terraform infrastructure was manually destroyed from inside the Jenkins container. This ensured a clean slate and prevented state conflicts before transitioning from a local backend to a remote AWS S3 backend.
 
-<details>
-<summary>Terraform Best Practices</summary>
- <br />
- 
- **content will be here**
+#### AWS S3 Bucket Creation
+Provisioned an Amazon S3 bucket to securely store the Terraform state file (`terraform.tfstate`). This allows distributed CI/CD pipelines and local machines to share and access a single source of truth for the infrastructure state.
+
+
+#### Terraform Configuration Update
+Updated the `main.tf` file to include the remote `s3` backend block. This directed Terraform to push the state file to the specified S3 bucket instead of storing it locally within the Jenkins workspace.
+
+    terraform {
+      required_version = ">= 0.12"
+      backend "s3" {
+        bucket = "myapp-tf-s3-bucket-3673"
+        key = "myapp/state.tfstate"
+        region = "eu-central-1"
+      }
+    }
+
+#### Executed CI/CD Pipeline with Remote Backend
+Triggered the Jenkins CI/CD pipeline containing the updated Terraform configuration. The pipeline successfully initialized the remote S3 backend, applied the infrastructure, and deployed the Docker containers to the newly provisioned EC2 instance. 
+
+    [Pipeline] dir
+    Running in /var/jenkins_home/workspace/java-terraform_master/terraform
+    [Pipeline] {
+    [Pipeline] sh
+    + terraform init
+    Initializing the backend...
+    
+    Successfully configured the backend "s3"! Terraform will automatically
+    use this backend unless the backend configuration changes.
+    
+    Initializing provider plugins...
+    - Reusing previous version of hashicorp/aws from the dependency lock file
+    - Using previously-installed hashicorp/aws v6.63.0
+    
+    Terraform has been successfully initialized!
+    ...
+    [Pipeline] sh
+    + terraform apply --auto-approve
+    data.aws_ami.latest-amazon-linux-image: Reading...
+    data.aws_ami.latest-amazon-linux-image: Read complete after 0s [id=ami-030f85e68f5db92a9]
+    ...
+    aws_instance.myapp-server: Creating...
+    aws_instance.myapp-server: Still creating... [00m10s elapsed]
+    aws_instance.myapp-server: Creation complete after 12s [id=i-046a115228b08ed10]
+    
+    Apply complete! Resources: 6 added, 0 changed, 0 destroyed.
+    
+    Outputs:
+    ec2_public_ip = "3.64.13.241"
+    ...
+    + ssh -o StrictHostKeyChecking=no ec2-user@3.64.13.241 bash ./server-cmds.sh emrearabacioglu/demo-app:1.1.12-4 emrearabacioglu ****
+    ...
+    Login Succeeded
+    Image emrearabacioglu/demo-app:1.1.12-4 Pulled 
+    Image postgres:16 Pulled 
+    Container ec2-user-postgres-1 Started
+    success
+    ...
+    Finished: SUCCESS
+
+#### Remote State Verification
+Verified the remote state integration from the local development environment. Initialized Terraform locally and fetched the state directly from the AWS S3 bucket, successfully retrieving the list of active AWS resources managed by Jenkins.
+
+    root@PC:~/modules/terraform/java-terraform (master)# cd terraform/
+    root@PC:~/modules/terraform/java-terraform/terraform (master)# terraform init
+    Initializing the backend...
+    
+    Successfully configured the backend "s3"! Terraform will automatically
+    use this backend unless the backend configuration changes.
+    ...
+    Terraform has been successfully initialized!
+    
+    root@PC:~/modules/terraform/java-terraform/terraform (master)# terraform state list
+    data.aws_ami.latest-amazon-linux-image
+    aws_default_route_table.main-rtb
+    aws_default_security_group.default-sg
+    aws_instance.myapp-server
+    aws_internet_gateway.myapp-igw
+    aws_subnet.myapp-subnet-1
+    aws_vpc.myapp-vpc
+
+<img width="1907" height="546" alt="image" src="https://github.com/user-attachments/assets/e5011bed-271e-4e43-9bb3-7e7aa5041282" />
+
  
 </details>
 
