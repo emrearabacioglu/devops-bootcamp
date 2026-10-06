@@ -689,7 +689,94 @@ The first version sorted all snapshots together, without the volume loop. It kep
 <summary>Automate restoring EC2 Volume from the Backup</summary>
  <br />
 
- content will be here
+### Demo Executed: Restore an EC2 Volume from the Latest Snapshot
+
+#### Preparation
+Used the same `prod` and `dev` EC2 instances and the snapshots left after the cleanup demo. The restore was done for the `prod` server (`i-0f98507bffe8e0a67`).
+
+#### Restore Script
+* Gets the volume attached to the instance with `describe_volumes()` and the `attachment.instance-id` filter.
+* Gets the snapshots of that volume and picks the latest one (sorted by `StartTime`).
+* Creates a new volume from the snapshot with `create_volume()` in the same AZ as the instance (`eu-central-1a`) and tags it as `prod`.
+* A new volume can only be attached when it is `available`. The script checks the state in a loop and attaches the volume to the instance as `/dev/xvdb` with the boto3 resource (`Instance.attach_volume()`).
+
+```python
+    import boto3
+    from operator import itemgetter
+
+    ec2_client = boto3.client('ec2', region_name="eu-central-1")
+    ec2_resource = boto3.resource('ec2', region_name="eu-central-1")
+
+    instance_id = "i-0f98507bffe8e0a67"
+
+    volumes = ec2_client.describe_volumes(
+        Filters=[
+            {
+                'Name': 'attachment.instance-id',
+                'Values': [instance_id]
+            }
+        ]
+    )
+
+    instance_volume = volumes['Volumes'][0]
+
+    snapshots = ec2_client.describe_snapshots(
+        OwnerIds=['self'],
+        Filters=[
+            {
+                'Name': 'volume-id',
+                'Values': [instance_volume['VolumeId']]
+            }
+        ]
+    )
+
+    latest_snapshot = sorted(snapshots['Snapshots'], key=itemgetter('StartTime'), reverse=True)[0]
+    print(latest_snapshot['StartTime'])
+
+    new_volume = ec2_client.create_volume(
+        SnapshotId=latest_snapshot['SnapshotId'],
+        AvailabilityZone="eu-central-1a",
+        TagSpecifications=[
+            {
+                'ResourceType': 'volume',
+                'Tags': [
+                    {
+                        'Key': 'Name',
+                        'Value': 'prod'
+                    }
+                ]
+            }
+        ]
+    )
+
+    while True:
+        vol = ec2_resource.Volume(new_volume['VolumeId'])
+        print(vol.state)
+        if vol.state == 'available':
+            ec2_resource.Instance(instance_id).attach_volume(
+                VolumeId=new_volume['VolumeId'],
+                Device='/dev/xvdb'
+            )
+            break
+```
+
+#### Execution
+The latest snapshot of the `prod` volume was used. The new volume stayed in `creating` state for a few seconds, then it was attached to the instance as soon as it became `available`:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/04-automate-backup-restore/restore-volume.py
+    2026-10-06 13:02:21.714000+00:00
+    creating
+    creating
+    creating
+    creating
+    creating
+    creating
+    available
+```
+#### UI View:
+
+<img width="1907" height="910" alt="image" src="https://github.com/user-attachments/assets/d7bd7481-8ed8-40d1-aa74-1ffd20d88505" />
+
 
  
 </details>
