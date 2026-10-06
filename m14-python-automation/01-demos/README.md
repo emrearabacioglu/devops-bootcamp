@@ -784,21 +784,57 @@ The latest snapshot of the `prod` volume was used. The new volume stayed in `cre
 ******
 
 <details>
-<summary>Handling Errors</summary>
- <br />
-
- content will be here
-
- 
-</details>
-
-******
-
-<details>
 <summary>Website Monitoring 1: Scheduled Task to Monitor Application Health</summary>
  <br />
 
- content will be here
+### Demo Executed: Website Monitoring - Validate the Application Response
+
+#### Preparation: Server on Linode
+Created a Linode server with Debian 13 and added my SSH public key during creation. Installed Docker from the official Docker apt repository and started an nginx container on port `8080`.
+
+```bash
+    root@localhost:~# apt update
+    root@localhost:~# apt install ca-certificates curl
+    root@localhost:~# install -m 0755 -d /etc/apt/keyrings
+    root@localhost:~# curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    root@localhost:~# chmod a+r /etc/apt/keyrings/docker.asc
+    root@localhost:~# tee /etc/apt/sources.list.d/docker.sources <<EOF
+    Types: deb
+    URIs: https://download.docker.com/linux/debian
+    Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+    Components: stable
+    Architectures: $(dpkg --print-architecture)
+    Signed-By: /etc/apt/keyrings/docker.asc
+    EOF
+    root@localhost:~# apt update
+    root@localhost:~# apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    root@localhost:~# docker run -d -p 8080:80 nginx
+    root@localhost:~# docker ps
+    CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                                     NAMES
+    7c20fbfa5125   nginx     "/docker-entrypoint.…"   9 seconds ago   Up 8 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   fervent_wiles
+```
+
+#### Monitoring Script
+The script runs locally (WSL) and sends an HTTP GET request to the nginx website with the `requests` package. If the status code is `200`, the application is up.
+
+```python
+    import requests
+
+    response = requests.get('http://172-105-246-115.ip.linodeusercontent.com:8080/')
+
+    if response.status_code == 200:
+        print('All good!')
+    else:
+        print('App down, fix it..')
+```
+
+#### Execution
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-health.py
+    All good!
+```
+
 
  
 </details>
