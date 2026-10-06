@@ -845,8 +845,76 @@ The script runs locally (WSL) and sends an HTTP GET request to the nginx website
 <summary>Website Monitoring 2: Automated Email Notification</summary>
  <br />
 
- content will be here
+### Demo Executed: Email Notification When the Website Is Down
 
+#### Gmail Configuration
+Gmail no longer supports "Less secure app access", so a normal account password can't be used for SMTP login. I enabled 2-Step Verification on my Google account and created an **App Password**, which is used only by this script.
+
+#### Credentials as Environment Variables
+The email address and the App Password are not written in the code. They are set as environment variables (`EMAIL_ADDRESS`, `EMAIL_PASSWORD`) and read in the script with `os.environ.get()`.
+
+#### Monitoring Script with Email Notification
+* `send_notification()` connects to `smtp.gmail.com` on port `587`, starts TLS, logs in and sends the email to my own address.
+* An email is sent in two cases:
+    * the website responds, but the status code is not `200`,
+    * the website is not reachable at all (connection error, caught with `try/except`).
+* In the message, the subject and the body are separated by an empty line (`\n\n`).
+
+```python
+    import requests
+    import smtplib
+    import os
+
+    EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+    EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+
+    def send_notification(email_msg):
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            message = f"Subject: SITE DOWN\n\n{email_msg}"
+            smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, message)
+
+    try:
+        response = requests.get('http://172-105-246-115.ip.linodeusercontent.com:8080/')
+        if response.status_code == 200:
+            print('All good!')
+        else:
+            print('App down, fix it..')
+            msg = f"App returned {response.status_code}, fix it!"
+            send_notification(msg)
+
+    except Exception as ex:
+        print(f'connection error.. {ex}')
+        msg = f"App not accessible.. fix it!"
+        send_notification(msg)
+```
+
+#### Execution
+Application up, then application returning a non-`200` status code:
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    All good!
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    App down, fix it..
+```
+
+Stopped the nginx container on the server to simulate an application crash:
+```bash
+    root@localhost:~# docker stop 7c20fbfa5125
+    7c20fbfa5125
+```
+
+The connection is refused, the exception is caught and the email is sent:
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    connection error.. HTTPConnectionPool(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPConnection(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+```
+
+#### Email Notification Received
+<img width="1699" height="386" alt="image" src="https://github.com/user-attachments/assets/7bb745cd-3c7b-4a81-a95d-ea35988a9aca" />
  
 </details>
 
