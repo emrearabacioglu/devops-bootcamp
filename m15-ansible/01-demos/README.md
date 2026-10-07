@@ -4,7 +4,29 @@
 <summary>Install Ansible</summary>
  <br />
 
- content will be here
+### Demo Executed: Ansible Control Node on WSL
+
+#### Installation
+My WSL machine is the Ansible control node. Ansible is installed in a Python virtual environment of the module, together with the Python libraries needed by the AWS and Kubernetes modules (`boto3`, `kubernetes`) and `ansible-lint`. The collections used in the module projects are installed with `ansible-galaxy`.
+
+```bash
+    root@PC:~/modules/ansible# python3 -m venv .venv
+    root@PC:~/modules/ansible# source .venv/bin/activate
+    (.venv) root@PC:~/modules/ansible# pip install ansible boto3 botocore kubernetes ansible-lint
+    (.venv) root@PC:~/modules/ansible# ansible-galaxy collection install amazon.aws community.docker community.general kubernetes.core
+```
+
+#### Verification
+```bash
+    (.venv) root@PC:~/modules/ansible# ansible --version
+    ansible [core 2.21.5]
+      config file = None
+      ansible python module location = /root/modules/ansible/.venv/lib/python3.12/site-packages/ansible
+      executable location = /root/modules/ansible/.venv/bin/ansible
+      python version = 3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0] (/root/modules/ansible/.venv/bin/python3)
+      jinja version = 3.1.6
+```
+
 
  
 </details>
