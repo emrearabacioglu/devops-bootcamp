@@ -217,7 +217,92 @@ A new droplet (`206.189.2.121`) that is not in `known_hosts` was added to the in
 <summary>Introduction to Playbooks</summary>
  <br />
 
- content will be here
+### Demo Executed: First Playbook - Install and Remove nginx
+
+#### Install nginx
+The playbook runs on the `webserver` group of the inventory (2 droplets). It installs the latest nginx with the `apt` module and starts it with the `service` module.
+
+```yaml
+    ---
+    - name: Configure nginx web server
+      hosts: webserver
+      tasks:
+      - name: install nginx server
+        apt:
+          name: nginx
+          state: latest
+      - name: start nginx server
+        service:
+          name: nginx
+          state: started
+```
+
+```bash
+    (.venv) root@PC:~/modules/ansible/00-basics# ansible-playbook -i hosts my-playbook.yaml
+
+    PLAY [Configure nginx web server] ****
+
+    TASK [Gathering Facts] ****
+    ok: [207.154.206.156]
+    ok: [164.90.222.155]
+
+    TASK [install nginx server] ****
+    changed: [164.90.222.155]
+    changed: [207.154.206.156]
+
+    TASK [start nginx server] ****
+    ok: [164.90.222.155]
+    ok: [207.154.206.156]
+
+    PLAY RECAP ****
+    164.90.222.155             : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+    207.154.206.156            : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
+`Gathering Facts` runs automatically before the tasks and collects information about the servers. The `start` task returned `ok`, because the nginx package on Ubuntu already starts the service after installation.
+
+#### Verification on the Server
+```bash
+    root@ubuntu-s-1vcpu-2gb-fra1-02:~# ps aux | grep nginx
+    root        3791  0.0  0.3  11204  7052 ?        S    09:05   0:00 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
+    www-data    3794  0.0  0.2  12892  4392 ?        S    09:05   0:00 nginx: worker process
+    root@ubuntu-s-1vcpu-2gb-fra1-02:~# nginx -v
+    nginx version: nginx/1.24.0 (Ubuntu)
+```
+
+#### Remove nginx
+Changed the desired state to `absent` (package) and `stopped` (service) and ran the same playbook again.
+
+```yaml
+    ---
+    - name: Configure nginx web server
+      hosts: webserver
+      tasks:
+      - name: install nginx server
+        apt:
+          name: nginx
+          state: absent
+      - name: start nginx server
+        service:
+          name: nginx
+          state: stopped
+```
+
+The first run removed nginx (`changed=1`). The second run made no changes (`changed=0`), because the servers were already in the desired state. Ansible is idempotent: it only changes what differs from the desired state.
+
+```bash
+    (.venv) root@PC:~/modules/ansible/00-basics# ansible-playbook -i hosts my-playbook.yaml
+    ...
+    PLAY RECAP ****
+    164.90.222.155             : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+    207.154.206.156            : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+    (.venv) root@PC:~/modules/ansible/00-basics# ansible-playbook -i hosts my-playbook.yaml
+    ...
+    PLAY RECAP ****
+    164.90.222.155             : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+    207.154.206.156            : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
 
  
 </details>
