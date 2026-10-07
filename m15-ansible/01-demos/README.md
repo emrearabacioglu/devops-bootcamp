@@ -391,7 +391,89 @@ The playbook has two plays:
 <summary>Project: Deploy Nodejs application - Part 2</summary>
  <br />
 
- content will be here
+### Demo Executed: Deploy Node.js Application - Install Dependencies and Start the App
+
+#### Playbook
+Extended the second play with three steps:
+
+* **Install dependencies** – the `npm` module (`community.general` collection) runs `npm install` in the app folder and creates `node_modules`.
+* **Start app** – the `command` module starts the app with `node server` in the `app` folder (`chdir`). The app runs in the foreground and never ends, so without `async` the task waits forever. My first run hung at this task and I had to stop it. With `async: 1000` and `poll: 0` Ansible starts the process and continues without waiting for it.
+* **Display status** – `ps aux | grep node` needs a pipe, so it runs with the `shell` module. The output is saved with `register` and printed with `debug`.
+
+```yaml
+    ---
+    - name: Install node and npm
+      hosts: 188.166.34.20
+      tasks:
+        - name: Update apt repo and cache
+          apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+        - name: Install nodejs and npm
+          apt:
+            pkg:
+              - nodejs
+              - npm
+
+    - name: Deploy nodejs app
+      hosts: 188.166.34.20
+      tasks:
+        - name: Unpack the nodejs file
+          unarchive:
+            src: nodejs-app/nodejs-app-1.0.0.tgz
+            dest: /root/
+        - name: Install dependencies
+          npm:
+            path: /root/package
+        - name: Start app
+          command:
+            chdir: /root/package/app/
+            cmd: node server
+          async: 1000
+          poll: 0
+        - name: Display status
+          shell: ps aux | grep node
+          register: app_status
+        - debug: msg={{app_status.stdout_lines}}
+```
+
+#### Execution
+```bash
+    (.venv) root@PC:~/modules/ansible/01-node-app# ansible-playbook -i hosts deploy-node.yaml
+    ...
+    TASK [Unpack the nodejs file] ****
+    ok: [188.166.34.20]
+
+    TASK [Install dependencies] ****
+    ok: [188.166.34.20]
+
+    TASK [Start app] ****
+    changed: [188.166.34.20]
+
+    TASK [Display status] ****
+    changed: [188.166.34.20]
+
+    TASK [debug] ****
+    ok: [188.166.34.20] => {
+        "msg": [
+            "root        8864  0.1  5.9 618624 59028 ?        Sl   11:22   0:00 node server",
+            "root        9983  0.0  0.2   2804  1972 pts/1    S+   11:32   0:00 /bin/sh -c ps aux | grep node",
+            "root        9985  0.0  0.2   7080  2160 pts/1    S+   11:32   0:00 grep node"
+        ]
+    }
+
+    PLAY RECAP ****
+    188.166.34.20              : ok=9    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
+`command` and `shell` tasks are not idempotent: Ansible can't know what the command changes, so they report `changed` on every run.
+
+#### Verification on the Server
+```bash
+    root@ubuntu-s-1vcpu-1gb-ams3:~/package# ls
+    Dockerfile  Readme.md  app  node_modules  package-lock.json  package.json
+    root@ubuntu-s-1vcpu-1gb-ams3:~/package# ps aux | grep node
+    root        8864 11.8  6.3 618112 62808 ?        Sl   11:22   0:00 node server
+```
+
 
  
 </details>
