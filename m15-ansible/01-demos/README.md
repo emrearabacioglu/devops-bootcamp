@@ -694,7 +694,91 @@ The result is the same as before. The user, the files and the dependencies alrea
 <summary>Project: Deploy Nexus - Part 1</summary>
  <br />
 
- content will be here
+### Demo Executed: Deploy Nexus - Install Java and Unpack the Nexus Installer
+
+#### Preparation
+Created a new Ubuntu droplet on DigitalOcean (`206.189.51.31`) for Nexus and added it to the inventory of the project. The playbook automates the manual Nexus installation steps.
+
+#### Playbook
+* **Install java and net-tools** – Nexus 3.70.1 and later needs Java 17, so `openjdk-17-jre-headless` is installed instead of Java 8. `net-tools` provides `netstat` to check the Nexus port later.
+* **Download/Unpack Nexus Installer**:
+    * `get_url` downloads the latest Nexus to `/opt/`. The result is saved with `register`, so the next task can use the downloaded file path (`download_result.dest`).
+    * `unarchive` with `remote_src: yes` unpacks the file that is already on the server (by default it copies the file from my machine).
+    * The unpacked folder name contains the Nexus version, which changes with every release. `find` gets the folder name, so it is not hardcoded.
+    * The folder is renamed to `/opt/nexus` with `mv`. `stat` checks if `/opt/nexus` already exists and `when` skips the task in that case, so the `shell` task doesn't fail on the next run.
+
+```yaml
+    ---
+    - name: Install java and net-tools
+      hosts: 206.189.51.31
+      tasks:
+        - name: Update apt repo and cache
+          apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+        - name: Install Java 17
+          apt: name=openjdk-17-jre-headless
+
+        - name: Install net-tools
+          apt: name=net-tools
+
+    - name: Download/Unpack Nexus Installer
+      hosts: 206.189.51.31
+      tasks:
+        - name: Download Nexus
+          get_url:
+            url: https://download.sonatype.com/nexus/3/latest-linux-x86_64.tar.gz
+            dest: /opt/
+          register: download_result
+
+        - name: Untar Nexus Installer
+          unarchive:
+            src: "{{download_result.dest}}"
+            dest: /opt/
+            remote_src: yes
+
+        - name: Find nexus folder
+          find:
+            paths: /opt/
+            pattern: "nexus-*"
+            file_type: directory
+          register: find_result
+
+        - name: Check if nexus folder stats
+          stat:
+            path: /opt/nexus
+          register: stat_result
+
+        - name: Rename nexus folder
+          shell: mv {{find_result.files[0].path}} /opt/nexus
+          when: not stat_result.stat.exists
+```
+
+#### Execution
+The folder was already renamed in an earlier run, so the rename task is skipped:
+
+```bash
+    (.venv) root@PC:~/modules/ansible/02-nexus# ansible-playbook -i hosts deploy-nexus.yaml
+    ...
+    PLAY [Download/Unpack Nexus Installer] ****
+    ...
+    TASK [Download Nexus] ****
+    ok: [206.189.51.31]
+
+    TASK [Untar Nexus Installer] ****
+    changed: [206.189.51.31]
+
+    TASK [Find nexus folder] ****
+    ok: [206.189.51.31]
+
+    TASK [Check if nexus folder stats] ****
+    ok: [206.189.51.31]
+
+    TASK [Rename nexus folder] ****
+    skipping: [206.189.51.31]
+
+    PLAY RECAP ****
+    206.189.51.31              : ok=9    changed=1    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+```
 
  
 </details>
