@@ -484,7 +484,96 @@ Extended the second play with three steps:
 <summary>Project: Deploy Nodejs application - Part 3</summary>
  <br />
 
- content will be here
+### Demo Executed: Deploy Node.js Application - Run the App with a Dedicated Linux User
+
+#### Playbook
+Until now the app was deployed and started as `root`. To follow the least privilege principle, the app now runs with its own Linux user:
+
+* **Create user for nodeapp** – a new play creates the user `nodeuser` with the `user` module.
+* **Deploy nodejs app** – `become: True` and `become_user: nodeuser` run all tasks of this play as `nodeuser` (Ansible connects as `root` and switches the user with `sudo`). The artifact is unpacked to `/home/nodeuser` and the paths of the next tasks are adjusted.
+
+```yaml
+    ---
+    - name: Install node and npm
+      hosts: 188.166.34.20
+      tasks:
+        - name: Update apt repo and cache
+          apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+        - name: Install nodejs and npm
+          apt:
+            pkg:
+              - nodejs
+              - npm
+
+    - name: Create user for nodeapp
+      hosts: 188.166.34.20
+      tasks:
+        - name: Create linux user
+          user:
+            name: nodeuser
+            comment: node admin
+            group: admin
+
+    - name: Deploy nodejs app
+      hosts: 188.166.34.20
+      become: True
+      become_user: nodeuser
+      tasks:
+        - name: Unpack the nodejs file
+          unarchive:
+            src: nodejs-app/nodejs-app-1.0.0.tgz
+            dest: /home/nodeuser
+        - name: Install dependencies
+          npm:
+            path: /home/nodeuser/package
+        - name: Start app
+          command:
+            chdir: /home/nodeuser/package/app/
+            cmd: node server
+          async: 1000
+          poll: 0
+        - name: Display status
+          shell: ps aux | grep node
+          register: app_status
+        - debug: msg={{app_status.stdout_lines}}
+```
+
+#### Execution
+The `node server` process is now owned by `nodeuser`:
+
+```bash
+    (.venv) root@PC:~/modules/ansible/01-node-app# ansible-playbook -i hosts deploy-node.yaml
+    ...
+    TASK [Create linux user] ****
+    changed: [188.166.34.20]
+
+    PLAY [Deploy nodejs app] ****
+    ...
+    TASK [Unpack the nodejs file] ****
+    changed: [188.166.34.20]
+
+    TASK [Install dependencies] ****
+    changed: [188.166.34.20]
+
+    TASK [Start app] ****
+    changed: [188.166.34.20]
+
+    TASK [Display status] ****
+    changed: [188.166.34.20]
+
+    TASK [debug] ****
+    ok: [188.166.34.20] => {
+        "msg": [
+            ...
+            "nodeuser   10837 32.1  6.4 618064 63732 ?        Sl   11:49   0:00 node server",
+            ...
+        ]
+    }
+
+    PLAY RECAP ****
+    188.166.34.20              : ok=11   changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
 
  
 </details>
