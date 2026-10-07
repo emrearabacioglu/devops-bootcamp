@@ -138,7 +138,75 @@ Added the instances as a new group `ec2`. Amazon Linux uses `ec2-user` instead o
 <summary>Managing Host Key Checking and SSH keys</summary>
  <br />
 
- content will be here
+### Demo Executed: Host Key Checking for Long-lived and Ephemeral Servers
+
+Ansible connects over SSH, so a server has to be in `~/.ssh/known_hosts` (host key) and my public key has to be in the server's `authorized_keys`. Otherwise the connection stops at the host key prompt, which Ansible can't answer.
+
+#### Long-lived Server: Add the Host Key to known_hosts
+Created a new droplet with my SSH key. The host key was added to `known_hosts` with `ssh-keyscan` (`-H` stores the host name hashed), and my public key was already in `authorized_keys` on the server.
+
+```bash
+    (.venv) root@PC:~/modules/ansible/00-basics# ssh-keyscan -H 159.223.12.8 >> ~/.ssh/known_hosts
+    # 159.223.12.8:22 SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.19
+    (.venv) root@PC:~/modules/ansible/00-basics# ssh root@159.223.12.8
+    root@ubuntu-s-1vcpu-2gb-ams3:~# cat .ssh/authorized_keys
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCscZcZ...3Q== root@PC
+```
+
+```bash
+    (.venv) root@PC:~/modules/ansible/00-basics# ansible droplet -i hosts -m ping
+    207.154.206.156 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    164.90.222.155 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    159.223.12.8 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+```
+
+#### Ephemeral Servers: Disable Host Key Checking
+For servers that are created and destroyed often, adding every host key manually is not practical. Host key checking was disabled in the user level Ansible config. (Ansible was installed with pip, so there is no `/etc/ansible` directory.)
+
+```bash
+    (.venv) root@PC:~/modules/ansible# cat ~/.ansible.cfg
+    [defaults]
+    host_key_checking = False
+```
+
+A new droplet (`206.189.2.121`) that is not in `known_hosts` was added to the inventory and reached without any host key prompt:
+
+```bash
+    (.venv) root@PC:~/modules/ansible/00-basics# cat hosts
+    [droplet]
+    164.90.222.155
+    207.154.206.156
+    206.189.2.121
+
+    [droplet:vars]
+    ansible_ssh_private_key_file=/root/.ssh/id_rsa
+    ansible_user=root
+    ansible_python_interpreter=/usr/bin/python3.12
+
+    (.venv) root@PC:~/modules/ansible/00-basics# ansible droplet -i hosts -m ping
+    164.90.222.155 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    207.154.206.156 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    206.189.2.121 | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+```
+
 
  
 </details>
