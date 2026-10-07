@@ -313,7 +313,74 @@ The first run removed nginx (`changed=1`). The second run made no changes (`chan
 <summary>Project: Deploy Nodejs application - Part 1</summary>
  <br />
 
- content will be here
+#### Preparation
+* Created a new Ubuntu droplet on DigitalOcean (`188.166.34.20`) and added it to the inventory of the project.
+* Took the Node.js application from the bootcamp repository and packaged it with `npm pack` into `nodejs-app-1.0.0.tgz`.
+
+#### Playbook
+The playbook has two plays:
+
+* **Install node and npm** – updates the apt cache (skipped if it was updated in the last hour) and installs `nodejs` and `npm` with the `apt` module.
+* **Deploy nodejs app** – the `unarchive` module copies the artifact from my machine to the server and unpacks it in `/root/`. The `src` path is relative to the playbook.
+
+```yaml
+    ---
+    - name: Install node and npm
+      hosts: 188.166.34.20
+      tasks:
+        - name: Update apt repo and cache
+          apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+        - name: Install nodejs and npm
+          apt:
+            pkg:
+              - nodejs
+              - npm
+
+    - name: Deploy nodejs app
+      hosts: 188.166.34.20
+      tasks:
+        - name: Unpack the nodejs file
+          unarchive:
+            src: nodejs-app/nodejs-app-1.0.0.tgz
+            dest: /root/
+```
+
+#### Execution
+```bash
+    (.venv) root@PC:~/modules/ansible/01-node-app# ansible-playbook -i hosts deploy-node.yaml
+
+    PLAY [Install node and npm] ****
+
+    TASK [Gathering Facts] ****
+    ok: [188.166.34.20]
+
+    TASK [Update apt repo and cache] ****
+    ok: [188.166.34.20]
+
+    TASK [Install nodejs and npm] ****
+    ok: [188.166.34.20]
+
+    PLAY [Deploy nodejs app] ****
+
+    TASK [Gathering Facts] ****
+    ok: [188.166.34.20]
+
+    TASK [Unpack the nodejs file] ****
+    changed: [188.166.34.20]
+
+    PLAY RECAP ****
+    188.166.34.20              : ok=5    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
+#### Verification on the Server
+`npm pack` puts the application into a `package` folder, so the app is unpacked to `/root/package`:
+
+```bash
+    root@ubuntu-s-1vcpu-1gb-ams3:~# ls
+    package
+    root@ubuntu-s-1vcpu-1gb-ams3:~# ls package/
+    Dockerfile  Readme.md  app  package.json
+```
 
  
 </details>
