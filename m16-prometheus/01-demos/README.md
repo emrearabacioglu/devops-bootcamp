@@ -172,33 +172,107 @@ The spike is visible in the **Kubernetes / Compute Resources / Cluster** dashboa
 ******
 
 <details>
-<summary>Create own Alert Rules - Part 1</summary>
+<summary>Create own Alert Rules</summary>
  <br />
 
- content will be here
+### Demo Executed: Alert Rules for High CPU Load and Crash Looping Pods
 
- 
-</details>
+#### Alert Rules as a Kubernetes Resource
+With the Prometheus Operator, alert rules are not written into the Prometheus config file. They are created as a `PrometheusRule` custom resource, and the Operator adds them to Prometheus automatically.
 
-******
+The `release: monitoring` label is required: the Prometheus instance of the Helm chart only loads `PrometheusRule` resources that match its rule selector, which is the Helm release label.
 
-<details>
-<summary>Create own Alert Rules - Part 2</summary>
- <br />
+```yaml
+    apiVersion: monitoring.coreos.com/v1
+    kind: PrometheusRule
+    metadata:
+      name: main-rules
+      namespace: monitoring
+      labels:
+        app: kube-prometheus-stack
+        release: monitoring
+    spec:
+      groups:
+      - name: main.rules
+        rules:
+        - alert: HostHighCpuLoad
+          expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 50
+          for: 2m
+          labels:
+            severity: warning
+            namespace: monitoring
+          annotations:
+            description: " CPU load on host is over 50%\n Value = {{ $value }}\n Instance = {{ $labels.instance }}\n"
+            summary: "Host CPU load high"
+        - alert: K8sPodCrashLooping
+          expr: kube_pod_container_status_restarts_total > 5
+          for: 0m
+          labels:
+            severity: critical
+            namespace: monitoring
+          annotations:
+            description: " Pod: {{ $labels.pod }} is crash looping\n Restarted count: {{ $value }} "
+            summary: "k8s pod crash looping"
+```
 
- content will be here
+| Field | Meaning |
+|---|---|
+| `expr` | PromQL condition; the alert is active while it returns a result |
+| `for` | How long the condition must stay true before the alert fires |
+| `labels` | Extra labels on the alert, used later by Alertmanager for routing (e.g. `severity`) |
+| `annotations` | Human-readable text; `{{ $value }}` and `{{ $labels.<name> }}` are filled in with the real values |
 
- 
-</details>
+**`HostHighCpuLoad`:** `node_cpu_seconds_total{mode="idle"}` is the time each CPU spends idle. `rate(...[2m])` turns it into the idle ratio over the last 2 minutes, `avg by(instance)` averages all CPUs of a node, and `100 - idle%` gives the CPU usage per node. The alert fires when it stays above 50% for 2 minutes.
 
-******
+**`K8sPodCrashLooping`:** fires immediately (`for: 0m`) when a container has restarted more than 5 times.
 
-<details>
-<summary>Create own Alert Rules - Part 3</summary>
- <br />
+#### Apply the Rules
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl apply -f alert-rules.yaml
+    prometheusrule.monitoring.coreos.com/main-rules created
+    root@PC:~/modules/prometheus/02-alerting# kubectl get PrometheusRule -n monitoring | grep main
+    main-rules                                                        43s
+```
 
- content will be here
+The Prometheus pod has a `config-reloader` sidecar container. It watches the rule files that the Operator generates and tells Prometheus to reload them:
 
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl logs prometheus-monitoring-kube-prometheus-prometheus-0 -n monitoring -c config-reloader
+    ...
+    level=info ts=2026-10-10T07:48:17.631449771Z caller=reloader.go:546 msg="Reload triggered" cfg_in=/etc/prometheus/config/prometheus.yaml.gz cfg_out=/etc/prometheus/config_out/prometheus.env.yaml cfg_dirs= watched_dirs="/etc/prometheus/rules/prometheus-monitoring-kube-prometheus-prometheus-rulefiles-0, ..."
+
+    root@PC:~/modules/prometheus/02-alerting# kubectl logs prometheus-monitoring-kube-prometheus-prometheus-0 -n monitoring -c prometheus | grep "Completed loading"
+    ...
+    time=2026-10-10T07:48:17.630Z level=INFO source=main.go:1763 msg="Completed loading of configuration file" ... rules=57.169868ms ... filename=/etc/prometheus/config_out/prometheus.env.yaml totalDuration=66.582448ms
+```
+
+The new `main.rules` group is visible in the Prometheus UI under **Alerts**, with both rules in the `inactive` state:
+
+<img width="1909" height="703" alt="image" src="https://github.com/user-attachments/assets/088c579b-12cb-45cd-b0bd-81ee8b461a94" />
+
+#### Test the Alert Rule
+A pod that stresses 4 CPUs is started to raise the CPU load on a node:
+
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl run cpu-test --image=containerstack/cpustress -- --cpu 4 --timeout 30s --metrics-brief
+    pod/cpu-test created
+```
+
+An alert goes through three states:
+
+| State | Meaning |
+|---|---|
+| `inactive` | The condition in `expr` is not true |
+| `pending` | The condition is true, but not yet for the `for` duration |
+| `firing` | The condition has been true for the `for` duration; the alert is sent to Alertmanager |
+
+When the CPU load goes over 50%, `HostHighCpuLoad` becomes `pending`:
+
+<img width="1902" height="579" alt="image" src="https://github.com/user-attachments/assets/ea379b78-df19-48cc-930d-87560004f601" />
+
+After 2 minutes above 50%, it becomes `firing`:
+
+<img width="1909" height="572" alt="image" src="https://github.com/user-attachments/assets/0bc60db6-cf26-4deb-913c-5c75a00b8c18" />
  
 </details>
 
