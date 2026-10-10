@@ -472,7 +472,86 @@ The chart created a ServiceMonitor in the `default` namespace. It selects the ex
 <summary>Alert Rules & Grafana Dashboard for Redis</summary>
  <br />
 
- content will be here
+### Demo Executed: Redis Alert Rules and Grafana Dashboard
+
+#### Alert Rules for Redis
+The rules are taken from the [Awesome Prometheus Alerts](https://awesome-prometheus-alerts.grep.to/) collection, which has ready rules for common exporters. They use the metrics exposed by the Redis exporter:
+
+* **`RedisDown`:** `redis_up` is `0` when the exporter can't connect to Redis. It fires immediately.
+* **`RedisTooManyConnections`:** connected clients are more than 90% of the `maxclients` limit for 2 minutes.
+
+```yaml
+    apiVersion: monitoring.coreos.com/v1
+    kind: PrometheusRule
+    metadata:
+      name: redis-rules
+      labels:
+        app: kube-prometheus-stack
+        release: monitoring
+    spec:
+      groups:
+      - name: redis.rules
+        rules:
+        - alert: RedisDown
+          expr: 'redis_up == 0'
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: Redis down (instance {{ $labels.instance }})
+            description: "Redis instance is down\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+
+        - alert: RedisTooManyConnections
+          expr: 'redis_connected_clients / redis_config_maxclients * 100 > 90 and redis_config_maxclients > 0'
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: Redis too many connections (instance {{ $labels.instance }})
+            description: "Redis is running out of connections (> 90% used)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+```
+
+```bash
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl apply -f redis-rules.yaml
+    prometheusrule.monitoring.coreos.com/redis-rules created
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get prometheusrule
+    NAME          AGE
+    redis-rules   18s
+```
+
+The `redis.rules` group appears in the Prometheus UI with both rules `inactive`:
+
+<img width="1900" height="694" alt="image" src="https://github.com/user-attachments/assets/3956d918-b01f-444c-b889-9319c1776bcd" />
+
+#### Trigger RedisDown
+To simulate a Redis outage, the `redis-cart` deployment is scaled down to 0 replicas (`replicas: 0` with `kubectl edit`), and then scaled back up to 1:
+
+```bash
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get pod | grep redis
+    redis-cart-5c6f5bbbd9-5js5m                                 1/1     Running   0          4h33m
+    redis-exporter-prometheus-redis-exporter-76fc4969d9-494vq   1/1     Running   0          21m
+
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl edit deployment redis-cart
+    deployment.apps/redis-cart edited
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get pod | grep redis
+    redis-exporter-prometheus-redis-exporter-76fc4969d9-494vq   1/1     Running   0          22m
+```
+
+The exporter is still running but can't reach Redis, so `redis_up` drops to `0` and `RedisDown` fires:
+
+<img width="1905" height="575" alt="image" src="https://github.com/user-attachments/assets/a263b6ca-93da-4bc5-8ae2-4e68c34eb424" />
+
+```bash
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl edit deployment redis-cart
+    deployment.apps/redis-cart edited
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get pod | grep redis-cart
+    redis-cart-5c6f5bbbd9-r86lx                                 0/1     Running   0          6s
+```
+
+#### Grafana Dashboard for Redis
+Instead of building a dashboard from scratch, a community dashboard made for the Redis exporter is imported from [grafana.com/grafana/dashboards](https://grafana.com/grafana/dashboards): **Dashboards > New > Import**, enter the dashboard ID, and select Prometheus as the data source. It shows uptime, connected clients, memory usage, commands per second and network I/O of the Redis instance:
+
+<img width="1914" height="992" alt="image" src="https://github.com/user-attachments/assets/37befd1d-903d-4801-aabb-9b5b41985d0b" />
 
  
 </details>
