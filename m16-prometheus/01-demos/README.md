@@ -282,23 +282,100 @@ After 2 minutes above 50%, it becomes `firing`:
 <summary>Configure Alertmanager with Email Receiver</summary>
  <br />
 
- content will be here
+### Demo Executed: Send Email Notifications for the Alert Rules
 
+#### How Notifications Work
+Prometheus only evaluates the alert rules. When an alert is `firing`, Prometheus sends it to **Alertmanager**, which decides where to send it (receivers), how to group it and how often to repeat it (routes).
+
+With the Prometheus Operator, the Alertmanager configuration is added as an `AlertmanagerConfig` custom resource. The Operator merges it into the Alertmanager config and the `config-reloader` sidecar reloads Alertmanager.
+
+#### Email Password as a Secret
+The Gmail account has 2-step verification, so the normal account password can't be used for SMTP. A Gmail **App Password** is created for this, and it is stored in a Kubernetes Secret in the same namespace as the `AlertmanagerConfig`:
+
+```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: gmail-auth
+      namespace: monitoring
+    type: Opaque
+    data:
+      password: <base64-encoded-app-password>
+```
+
+#### AlertmanagerConfig
+* **Receiver:** `email` sends notifications through Gmail SMTP; the password is read from the `gmail-auth` Secret.
+* **Route:** all alerts go to the `email` receiver and are repeated every 30 minutes while they are still firing. Two child routes match the alerts by name; `K8sPodCrashLooping` is critical, so it is repeated every 10 minutes.
+* **Namespace matcher:** the Operator automatically adds a `namespace="monitoring"` matcher to the routes of an `AlertmanagerConfig` in the `monitoring` namespace. This is why the alert rules have the `namespace: monitoring` label; without it, the alerts would not match this config.
+
+```yaml
+    apiVersion: monitoring.coreos.com/v1alpha1
+    kind: AlertmanagerConfig
+    metadata:
+      name: main-rules-alert
+      namespace: monitoring
+    spec:
+      route:
+        receiver: 'email'
+        repeatInterval: 30m
+        routes:
+        - matchers:
+          - name: alertname
+            value: HostHighCpuLoad
+        - matchers:
+          - name: alertname
+            value: K8sPodCrashLooping
+          repeatInterval: 10m
+      receivers:
+      - name: 'email'
+        emailConfigs:
+        - to: 'emrearabacolu@gmail.com'
+          from: 'emrearabacolu@gmail.com'
+          smarthost: 'smtp.gmail.com:587'
+          authUsername: 'emrearabacolu@gmail.com'
+          authIdentity: 'emrearabacolu@gmail.com'
+          authPassword:
+            name: gmail-auth
+            key: password
+```
+
+#### Apply the Configuration
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl apply -f email-secret.yaml
+    secret/gmail-auth created
+    root@PC:~/modules/prometheus/02-alerting# kubectl apply -f alert-manager.yaml
+    alertmanagerconfig.monitoring.coreos.com/main-rules-alert created
+    root@PC:~/modules/prometheus/02-alerting# kubectl get alertmanagerconfig -n monitoring
+    NAME               AGE
+    main-rules-alert   37s
+```
+
+The `config-reloader` sidecar of the Alertmanager pod reloads the new configuration:
+
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl logs alertmanager-monitoring-kube-prometheus-alertmanager-0 -n monitoring -c config-reloader | grep -i "reload triggered"
+    ...
+    level=info ts=2026-10-10T09:03:42.086257628Z caller=reloader.go:546 msg="Reload triggered" cfg_in=/etc/alertmanager/config/alertmanager.yaml.gz cfg_out=/etc/alertmanager/config_out/alertmanager.env.yaml cfg_dirs= watched_dirs=/etc/alertmanager/config
+```
+
+#### Trigger the Alert
+The CPU stress pod from the alert rules demo is started again to push the node CPU over 50%:
+
+```bash
+    root@PC:~/modules/prometheus/02-alerting# kubectl delete pod cpu-test
+    pod "cpu-test" deleted from default namespace
+    root@PC:~/modules/prometheus/02-alerting# kubectl run cpu-test --image=containerstack/cpustress -- --cpu 4 --timeout 60s --metrics-brief
+    pod/cpu-test created
+```
+
+Alertmanager sends the notification email:
+
+<img width="1706" height="1020" alt="image" src="https://github.com/user-attachments/assets/deeb6e9d-60b7-4c96-9824-939faa265bff" />
  
 </details>
 
 ******
 
-<details>
-<summary>Trigger Alerts for Email Receiver</summary>
- <br />
-
- content will be here
-
- 
-</details>
-
-******
 
 <details>
 <summary>Deploy Redis Exporter</summary>
