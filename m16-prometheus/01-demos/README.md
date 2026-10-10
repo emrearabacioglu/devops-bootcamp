@@ -381,7 +381,87 @@ Alertmanager sends the notification email:
 <summary>Deploy Redis Exporter</summary>
  <br />
 
- content will be here
+
+### Demo Executed: Expose Redis Metrics with an Exporter
+
+#### Why an Exporter?
+Redis (`redis-cart`, the cart database of the microservices app) doesn't expose metrics in the Prometheus format. An **exporter** runs next to it, connects to Redis, reads its internal stats and exposes them on a `/metrics` endpoint that Prometheus can scrape.
+
+#### How Prometheus Finds Targets
+Prometheus finds its targets through **ServiceMonitor** resources. A ServiceMonitor selects a Service by its labels and tells Prometheus which port to scrape. The Helm chart already created one for every component of the stack:
+
+```bash
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get servicemonitor -n monitoring
+    NAME                                                 AGE
+    monitoring-grafana                                   4h1m
+    monitoring-kube-prometheus-alertmanager              4h1m
+    monitoring-kube-prometheus-apiserver                 4h1m
+    ...
+    monitoring-kube-state-metrics                        4h1m
+    monitoring-prometheus-node-exporter                  4h1m
+```
+
+Like the alert rules, a ServiceMonitor needs the `release: monitoring` label, otherwise the Prometheus instance of the stack ignores it.
+
+#### Install the Redis Exporter with Helm
+The `prometheus-redis-exporter` chart is installed from the Prometheus community OCI registry. The values file points the exporter to the Redis service and enables a ServiceMonitor with the `release: monitoring` label:
+
+```yaml
+    redisAddress: redis://redis-cart:6379
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: monitoring
+```
+
+```bash
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get svc | grep redis
+    redis-cart              ClusterIP      10.100.129.196   <none>        6379/TCP       4h5m
+
+    root@PC:~/modules/prometheus/03-redis-monitoring# helm install redis-exporter oci://ghcr.io/prometheus-community/charts/prometheus-redis-exporter -f redis-values.yaml
+    Pulled: ghcr.io/prometheus-community/charts/prometheus-redis-exporter:6.33.0
+    NAME: redis-exporter
+    LAST DEPLOYED: Sat Oct 10 13:12:44 2026
+    NAMESPACE: default
+    STATUS: deployed
+    REVISION: 1
+
+    root@PC:~/modules/prometheus/03-redis-monitoring# helm ls
+    NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                                   APP VERSION
+    redis-exporter  default         1               2026-10-10 13:12:44.934757437 +0300 +03 deployed        prometheus-redis-exporter-6.33.0        v1.93.0
+
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get pod | grep redis
+    redis-cart-5c6f5bbbd9-5js5m                                 1/1     Running   0          4h13m
+    redis-exporter-prometheus-redis-exporter-76fc4969d9-494vq   1/1     Running   0          80s
+```
+
+#### The Generated ServiceMonitor
+The chart created a ServiceMonitor in the `default` namespace. It selects the exporter's Service by its labels and scrapes the `redis-exporter` port:
+
+```yaml
+    root@PC:~/modules/prometheus/03-redis-monitoring# kubectl get servicemonitor redis-exporter-prometheus-redis-exporter -o yaml
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: Helm
+        release: monitoring
+      name: redis-exporter-prometheus-redis-exporter
+      namespace: default
+    spec:
+      endpoints:
+      - port: redis-exporter
+      jobLabel: redis-exporter-prometheus-redis-exporter
+      namespaceSelector:
+        matchNames:
+        - default
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: redis-exporter
+          app.kubernetes.io/name: prometheus-redis-exporter
+```
+
+<img width="1909" height="381" alt="image" src="https://github.com/user-attachments/assets/0880fa24-261c-4148-9ff7-ef924f643913" />
 
  
 </details>
