@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  java-app-chart:
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2026-08-23T18:59:27.521904528+03:00"
+    description: A Helm chart for Kubernetes
+    digest: a6fbeaed0db36c9eeb6f82db7296443563aa9679238ca648ef05d8c1d1da755a
+    name: java-app-chart
+    type: application
+    urls:
+    - https://emrearabacioglu.github.io/java-app-chart/java-app-chart-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-08-23T18:59:27.521159442+03:00"

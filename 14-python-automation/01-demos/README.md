@@ -1,0 +1,1033 @@
+# Module 14 – Automation with Python
+
+## Contents
+
+| # | Section | What's inside |
+|---|---|---|
+| 1 | Getting familiar with Boto3 | Create a VPC with two subnets and list VPCs with the `client` and `resource` interfaces |
+| 2 | Health Check: EC2 Status Checks | 3 EC2 instances with Terraform, status check script that runs on a schedule |
+| 3 | Automate configuring EC2 Server Instances | Add `environment` tags to EC2 instances in Frankfurt and Paris |
+| 4 | Automate displaying EKS cluster information | EKS cluster with Terraform, print its status, endpoint and version |
+| 5 | Data Backup & Restore | Scheduled volume snapshots, cleanup of old snapshots, restore a volume from the latest snapshot |
+| 6 | Website Monitoring and Recovery | nginx on Linode, HTTP check, email alert, restart the container or reboot the server |
+
+## Takeaways
+
+- **Boto3 client vs resource:** `resource` was used to create things and work with objects (`create_vpc()`, `Volume(...).state`, `Instance(...).attach_volume()`), `client` for the `describe_*` / `list_*` calls. Credentials and region come from `~/.aws`; `region_name=` sets the region in the script.
+- **EC2 status checks:** `describe_instance_status()` gives the instance state plus the Instance status and System status checks. Add `IncludeAllInstances=True`, otherwise only running instances are returned.
+- **Scheduling in Python:** `schedule.every(5).seconds.do(func)` (or `.minutes`) together with a `while True: schedule.run_pending()` loop.
+- **One client per region:** tagging instances in Frankfurt and Paris needed a separate client/resource for each region. `create_tags(Resources=[...], Tags=[...])` tags all instance IDs in one call.
+- **Filter on the AWS side:** `Filters=[{'Name': ..., 'Values': [...]}]` with `tag:Name`, `instance-state-name`, `volume-id` or `attachment.instance-id`. `OwnerIds=['self']` returns only my own snapshots.
+- **Snapshot cleanup gotcha:** the first version sorted all snapshots together, kept the latest 2 overall and deleted every `dev` backup. Loop per volume, sort with `sorted(..., key=itemgetter('StartTime'), reverse=True)` and delete `[2:]`.
+- **Restore a volume:** `create_volume()` from the latest snapshot in the same AZ as the instance, wait until the volume is `available`, then `attach_volume()`.
+- **EKS info:** `list_clusters()` for the names, `describe_cluster()` for status, endpoint and Kubernetes version.
+- **Gmail SMTP:** "Less secure app access" is gone, so 2-Step Verification + an App Password. `smtplib.SMTP('smtp.gmail.com', 587)` + `starttls()`; subject and body are separated by `\n\n`.
+- **Secrets as env vars:** `EMAIL_ADDRESS`, `EMAIL_PASSWORD` and `LINODE_TOKEN` are read with `os.environ.get()`, not written in the code.
+- **Recovery logic:** non-`200` response → email + `docker start` over SSH with `paramiko`. Not reachable (exception) → email + reboot via the Linode API, wait for `running` + 10 seconds, then start the container.
+
+******
+
+<details>
+<summary>Getting familiar with Boto3</summary>
+ <br />
+
+### Demo Executed: Creating and Listing VPCs with Boto3
+
+#### VPC and Subnet Creation
+Used both Boto3 interfaces: the `resource` interface to create a VPC with two subnets and a `Name` tag, and the low-level `client` interface to list all VPCs in the region with their CIDR block state. AWS credentials and region are read from the local AWS CLI configuration (`~/.aws`).
+
+```python
+    import boto3
+
+    ec2_client = boto3.client('ec2')
+    ec2_resource = boto3.resource('ec2')
+
+
+    new_vpc = ec2_resource.create_vpc(
+        CidrBlock="10.0.0.0/16"
+    )
+
+    new_vpc.create_subnet(
+        CidrBlock="10.0.1.0/24"
+    )
+
+    new_vpc.create_subnet(
+        CidrBlock="10.0.2.0/24"
+    )
+
+    new_vpc.create_tags(
+        Tags=[
+            {
+                'Key': 'Name',
+                'Value': 'auto-vpc'
+            },
+        ]
+    )
+
+    all_available_vpcs = ec2_client.describe_vpcs()
+    vpcs = all_available_vpcs["Vpcs"]
+
+    for vpc in vpcs :
+        print(vpc["VpcId"])
+        cidr_block_assoc_sets = vpc["CidrBlockAssociationSet"]
+        for assoc_set in cidr_block_assoc_sets:
+            print(assoc_set["CidrBlockState"])
+```
+
+#### Execution
+Raw `describe_vpcs()` response (only the default VPC exists at this point):
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/main.py
+    {'Vpcs': [{'OwnerId': '731872836472', 'InstanceTenancy': 'default', 'CidrBlockAssociationSet': [{'AssociationId': 'vpc-cidr-assoc-08bedd3101e78434d', 'CidrBlock': '172.31.0.0/16', 'CidrBlockState': {'State': 'associated'}}], 'IsDefault': True, ..., 'VpcId': 'vpc-0511d66bb75f2d673', 'State': 'available', 'CidrBlock': '172.31.0.0/16', ...}], 'ResponseMetadata': {..., 'HTTPStatusCode': 200, ...}}
+```
+
+Parsed output with only the VPC ID and CIDR block state:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/main.py
+    vpc-0511d66bb75f2d673
+    {'State': 'associated'}
+```
+
+After running the full script: the new `auto-vpc` is listed next to the default VPC:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/main.py
+    vpc-0724dc1839ebd1745
+    {'State': 'associated'}
+    vpc-0511d66bb75f2d673
+    {'State': 'associated'}
+```
+<img width="1709" height="554" alt="image" src="https://github.com/user-attachments/assets/d3a66f24-14aa-47bc-993d-1e81f0d753bd" />
+
+</details>
+
+******
+
+<details>
+<summary>Demo Project: Health Check: EC2 Status Checks</summary>
+ <br />
+
+### Demo Executed: EC2 Status Checks with Boto3 and a Scheduled Task
+
+#### Preparation: 3 EC2 Instances with Terraform
+Reused the AWS infrastructure from the Terraform module (VPC, subnet, security group, internet gateway, route table, key pair) and created 3 EC2 instances to monitor.
+
+```hcl
+    provider "aws" {
+        region = "eu-central-1"
+    }
+
+    variable vpc_cidr_block {}
+    variable subnet_cidr_block {}
+    variable avail_zone {}
+    variable env_prefix {}
+    variable instance_type {}
+    variable my_ip {}
+    variable public_key_location {}
+
+    data "aws_ami" "amazon-linux-image" {
+      most_recent = true
+      owners      = ["amazon"]
+
+      filter {
+        name   = "name"
+        values = ["al2023-ami-2023.*-x86_64"]
+      }
+
+      filter {
+        name   = "virtualization-type"
+        values = ["hvm"]
+      }
+    }
+
+    output "ami_id" {
+      value = data.aws_ami.amazon-linux-image.id
+    }
+
+    resource "aws_vpc" "myapp-vpc" {
+      cidr_block = var.vpc_cidr_block
+      tags = {
+        Name = "${var.env_prefix}-vpc"
+      }
+    }
+
+    resource "aws_subnet" "myapp-subnet-1" {
+      vpc_id            = aws_vpc.myapp-vpc.id
+      cidr_block        = var.subnet_cidr_block
+      availability_zone = var.avail_zone
+      tags = {
+        Name = "${var.env_prefix}-subnet-1"
+      }
+    }
+
+    resource "aws_security_group" "myapp-sg" {
+      name   = "myapp-sg"
+      vpc_id = aws_vpc.myapp-vpc.id
+
+      ingress {
+        from_port   = 22
+        to_port     = 22
+        protocol    = "tcp"
+        cidr_blocks = [var.my_ip]
+      }
+
+      ingress {
+        from_port   = 8080
+        to_port     = 8080
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+      }
+
+      egress {
+        from_port       = 0
+        to_port         = 0
+        protocol        = "-1"
+        cidr_blocks     = ["0.0.0.0/0"]
+        prefix_list_ids = []
+      }
+
+      tags = {
+        Name = "${var.env_prefix}-sg"
+      }
+    }
+
+    resource "aws_internet_gateway" "myapp-igw" {
+      vpc_id = aws_vpc.myapp-vpc.id
+
+      tags = {
+        Name = "${var.env_prefix}-internet-gateway"
+      }
+    }
+
+    resource "aws_route_table" "myapp-route-table" {
+      vpc_id = aws_vpc.myapp-vpc.id
+
+      route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.myapp-igw.id
+      }
+
+      # default route, mapping VPC CIDR block to "local", created implicitly and cannot be specified.
+
+      tags = {
+        Name = "${var.env_prefix}-route-table"
+      }
+    }
+
+    # Associate subnet with Route Table
+    resource "aws_route_table_association" "a-rtb-subnet" {
+      subnet_id      = aws_subnet.myapp-subnet-1.id
+      route_table_id = aws_route_table.myapp-route-table.id
+    }
+
+    resource "aws_key_pair" "ssh-key" {
+      key_name   = "myapp-key"
+      public_key = file(var.public_key_location)
+    }
+
+    output "server-ip" {
+      value = aws_instance.myapp-server.public_ip
+    }
+
+    resource "aws_instance" "myapp-server" {
+      ami                         = data.aws_ami.amazon-linux-image.id
+      instance_type               = var.instance_type
+      key_name                    = aws_key_pair.ssh-key.key_name
+      associate_public_ip_address = true
+      subnet_id                   = aws_subnet.myapp-subnet-1.id
+      vpc_security_group_ids      = [aws_security_group.myapp-sg.id]
+      availability_zone           = var.avail_zone
+
+      tags = {
+        Name = "${var.env_prefix}-server"
+      }
+
+      user_data = file("entry-script.sh")
+
+      user_data_replace_on_change = true
+    }
+
+    resource "aws_instance" "myapp-server-two" {
+      ami                         = data.aws_ami.amazon-linux-image.id
+      instance_type               = var.instance_type
+      key_name                    = aws_key_pair.ssh-key.key_name
+      associate_public_ip_address = true
+      subnet_id                   = aws_subnet.myapp-subnet-1.id
+      vpc_security_group_ids      = [aws_security_group.myapp-sg.id]
+      availability_zone           = var.avail_zone
+
+      tags = {
+        Name = "${var.env_prefix}-server-two"
+      }
+
+      user_data = file("entry-script.sh")
+
+      user_data_replace_on_change = true
+    }
+
+    resource "aws_instance" "myapp-server-three" {
+      ami                         = data.aws_ami.amazon-linux-image.id
+      instance_type               = var.instance_type
+      key_name                    = aws_key_pair.ssh-key.key_name
+      associate_public_ip_address = true
+      subnet_id                   = aws_subnet.myapp-subnet-1.id
+      vpc_security_group_ids      = [aws_security_group.myapp-sg.id]
+      availability_zone           = var.avail_zone
+
+      tags = {
+        Name = "${var.env_prefix}-server-three"
+      }
+
+      user_data = file("entry-script.sh")
+
+      user_data_replace_on_change = true
+    }
+```
+
+Provisioned the instances:
+```bash
+    root@PC:~/modules/python-automation/01-ec2-health-check/terraform# terraform apply
+    ...
+    aws_instance.myapp-server-two: Refreshing state... [id=i-0957da2371a8ba1fc]
+    aws_instance.myapp-server: Refreshing state... [id=i-0d9ab4ceff4be7078]
+    ...
+      # aws_instance.myapp-server-three will be created
+      + resource "aws_instance" "myapp-server-three" {
+          + ami                                  = "ami-0149e5f1dd5234430"
+          + instance_type                        = "t3.micro"
+          + tags                                 = {
+              + "Name" = "dev-server-three"
+            }
+          ...
+        }
+
+    Plan: 1 to add, 0 to change, 0 to destroy.
+    ...
+    aws_instance.myapp-server-three: Creating...
+    aws_instance.myapp-server-three: Creation complete after 15s [id=i-05ec8658146509a8d]
+
+    Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+```
+
+#### Health Check Script with a Scheduler
+`describe_instance_status()` returns the state (running, stopped, terminated…) and the two AWS status checks of each instance:
+
+* **Instance status** – checks the instance itself (OS, network config)
+* **System status** – checks the AWS hardware the instance runs on
+
+`IncludeAllInstances=True` also returns instances that are not running; without it only running instances are listed. The `schedule` package runs the check every 5 seconds.
+
+```python
+    import boto3
+    import schedule
+
+    ec2_client = boto3.client('ec2', region_name="eu-central-1")
+    ec2_resource = boto3.resource('ec2', region_name="eu-central-1")
+
+
+    def check_instance_status():
+        statuses = ec2_client.describe_instance_status(
+            IncludeAllInstances=True
+        )
+        for status in statuses['InstanceStatuses']:
+            ins_status = status['InstanceStatus']['Status']
+            sys_status = status['SystemStatus']['Status']
+            state = status['InstanceState']['Name']
+            print(f"Instance {status['InstanceId']} is {state}. Instance status: {ins_status}, System status: {sys_status}")
+        print("\n")
+
+    schedule.every(5).seconds.do(check_instance_status)
+
+    while True:
+        schedule.run_pending()
+```
+
+#### Execution
+All 3 instances running and healthy (`i-02155…` is an instance replaced earlier by Terraform, it is still listed as `terminated` because of `IncludeAllInstances=True`):
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/01-ec2-health-check/healthcheck.py
+    Instance i-0957da2371a8ba1fc is running. Instance status: ok, System status: ok
+    Instance i-05ec8658146509a8d is running. Instance status: ok, System status: ok
+    Instance i-0d9ab4ceff4be7078 is running. Instance status: ok, System status: ok
+    Instance i-02155a8d271ea4ba5 is terminated. Instance status: not-applicable, System status: not-applicable
+```
+
+While the script was running, removed 2 instances with Terraform:
+```bash
+    root@PC:~/modules/python-automation/01-ec2-health-check/terraform# terraform apply --auto-approve
+    ...
+      # aws_instance.myapp-server-three will be destroyed
+      # (because aws_instance.myapp-server-three is not in configuration)
+    ...
+      # aws_instance.myapp-server-two will be destroyed
+      # (because aws_instance.myapp-server-two is not in configuration)
+    ...
+    Plan: 0 to add, 0 to change, 2 to destroy.
+    aws_instance.myapp-server-three: Destroying... [id=i-05ec8658146509a8d]
+    aws_instance.myapp-server-two: Destroying... [id=i-0957da2371a8ba1fc]
+    aws_instance.myapp-server-three: Destruction complete after 31s
+    aws_instance.myapp-server-two: Destruction complete after 31s
+
+    Apply complete! Resources: 0 added, 0 changed, 2 destroyed.
+```
+
+The scheduled script picked up the state change on its next runs (`running` → `shutting-down` → `terminated`):
+```bash
+    Instance i-0957da2371a8ba1fc is running. Instance status: ok, System status: ok
+    Instance i-05ec8658146509a8d is running. Instance status: ok, System status: ok
+    Instance i-0d9ab4ceff4be7078 is running. Instance status: ok, System status: ok
+    Instance i-02155a8d271ea4ba5 is terminated. Instance status: not-applicable, System status: not-applicable
+
+
+    Instance i-0957da2371a8ba1fc is shutting-down. Instance status: not-applicable, System status: not-applicable
+    Instance i-05ec8658146509a8d is shutting-down. Instance status: not-applicable, System status: not-applicable
+    Instance i-0d9ab4ceff4be7078 is running. Instance status: ok, System status: ok
+    Instance i-02155a8d271ea4ba5 is terminated. Instance status: not-applicable, System status: not-applicable
+    ...
+
+    Instance i-0957da2371a8ba1fc is terminated. Instance status: not-applicable, System status: not-applicable
+    Instance i-05ec8658146509a8d is terminated. Instance status: not-applicable, System status: not-applicable
+    Instance i-0d9ab4ceff4be7078 is running. Instance status: ok, System status: ok
+    Instance i-02155a8d271ea4ba5 is terminated. Instance status: not-applicable, System status: not-applicable
+```
+
+</details>
+
+******
+
+<details>
+<summary>Demo Project: Automate configuring EC2 Server Instances</summary>
+ <br />
+
+### Demo Executed: Adding Environment Tags to EC2 Instances in Multiple Regions
+
+#### Preparation
+Created 3 EC2 instances with Terraform in the default VPCs of two regions: 2 in Frankfurt (`eu-central-1`) and 1 in Paris (`eu-west-3`).
+
+#### Tagging Script
+The script uses a separate Boto3 client and resource per region. It collects the IDs of all instances in each region with `describe_instances()` and adds an `environment` tag with `create_tags()`:
+
+* Frankfurt instances → `environment=prod`
+* Paris instances → `environment=dev`
+
+A small helper function prints the instance tags before and after tagging (only non-terminated instances, filtered on the AWS side).
+
+```python
+    import boto3
+
+    ec2_client_frankfurt = boto3.client('ec2', region_name="eu-central-1")
+    ec2_resource_frankfurt = boto3.resource('ec2', region_name="eu-central-1")
+
+    ec2_client_paris = boto3.client('ec2', region_name="eu-west-3")
+    ec2_resource_paris = boto3.resource('ec2', region_name="eu-west-3")
+
+    def print_tags(client, region):
+        instances = client.describe_instances(
+            Filters=[{'Name': 'instance-state-name', 'Values': ['pending', 'running', 'stopping', 'stopped']}]
+        )
+        for res in instances['Reservations']:
+            for ins in res['Instances']:
+                tags = ", ".join(f"{t['Key']}={t['Value']}" for t in ins.get('Tags', []))
+                print(f"{region:<10} {ins['InstanceId']}  {ins['State']['Name']:<8}  {tags}")
+
+    print("----- BEFORE -----")
+    print_tags(ec2_client_frankfurt, "frankfurt")
+    print_tags(ec2_client_paris, "paris")
+
+    instances_ids_frankfurt = []
+    instances_ids_paris = []
+
+    reservations_frankfurt = ec2_client_frankfurt.describe_instances()['Reservations']
+    for res in reservations_frankfurt:
+        instances = res['Instances']
+        for ins in instances:
+            instances_ids_frankfurt.append(ins['InstanceId'])
+
+    response = ec2_resource_frankfurt.create_tags(
+        Resources=instances_ids_frankfurt,
+        Tags=[
+            {
+                'Key': 'environment',
+                'Value': 'prod'
+            },
+        ]
+    )
+
+    reservations_paris = ec2_client_paris.describe_instances()['Reservations']
+    for res in reservations_paris:
+        instances = res['Instances']
+        for ins in instances:
+            instances_ids_paris.append(ins['InstanceId'])
+
+    response = ec2_resource_paris.create_tags(
+        Resources=instances_ids_paris,
+        Tags=[
+            {
+                'Key': 'environment',
+                'Value': 'dev'
+            },
+        ]
+    )
+
+    print("----- AFTER -----")
+    print_tags(ec2_client_frankfurt, "frankfurt")
+    print_tags(ec2_client_paris, "paris")
+```
+
+#### Execution
+Tags before and after running the script:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/02-auto-configure-ec2/terraform/add-env-tags.py
+    ----- BEFORE -----
+    frankfurt  i-092f937388bb7e4d5  running   Name=frankfurt-server-2
+    frankfurt  i-0b665156e2e5c8b72  running   Name=frankfurt-server-1
+    paris      i-021c02f8b628d8340  running   Name=paris-server-1
+    ----- AFTER -----
+    frankfurt  i-092f937388bb7e4d5  running   Name=frankfurt-server-2, environment=prod
+    frankfurt  i-0b665156e2e5c8b72  running   Name=frankfurt-server-1, environment=prod
+    paris      i-021c02f8b628d8340  running   environment=dev, Name=paris-server-1
+```
+
+</details>
+
+******
+
+<details>
+<summary>Demo Project: Automate displaying EKS cluster information</summary>
+ <br />
+
+### Demo Executed: Displaying EKS Cluster Information with Boto3
+
+#### Preparation: EKS Cluster with Terraform
+Created an EKS cluster with the official Terraform registry modules: the VPC module (same setup as in the Terraform module) and the EKS module with a managed node group of 3 `t2.small` nodes.
+
+```hcl
+    module "eks" {
+      source  = "terraform-aws-modules/eks/aws"
+      version = "21.25.0"
+
+      name               = "myapp-eks-cluster"
+      kubernetes_version = "1.33"
+
+      subnet_ids = module.myapp-vpc.private_subnets
+      vpc_id     = module.myapp-vpc.vpc_id
+
+      endpoint_public_access                   = true
+      enable_cluster_creator_admin_permissions = true
+
+      addons = {
+        coredns                = {}
+        eks-pod-identity-agent = {
+          before_compute = true
+        }
+        kube-proxy             = {}
+        vpc-cni                = {
+          before_compute = true
+        }
+      }
+
+      eks_managed_node_groups = {
+        dev = {
+          ami_type       = "AL2023_x86_64_STANDARD"
+          instance_types = ["t2.small"]
+
+          min_size     = 1
+          max_size     = 3
+          desired_size = 3
+        }
+      }
+
+      tags = {
+        environment = "development"
+        application = "myapp"
+      }
+    }
+```
+
+Applied the configuration:
+```bash
+    root@PC:~/modules/python-automation/03-automate-display-eks/terraform# terraform apply
+    ...
+    Plan: 62 to add, 0 to change, 0 to destroy.
+    ...
+    module.eks.aws_eks_cluster.this[0]: Creation complete after 10m22s [id=myapp-eks-cluster]
+    ...
+    module.eks.module.eks_managed_node_group["dev"].aws_eks_node_group.this[0]: Creation complete after 1m50s [id=myapp-eks-cluster:dev-bcd8951e7992956431dc8f3880]
+    ...
+    Apply complete! Resources: 62 added, 0 changed, 0 destroyed.
+```
+
+#### Cluster Information Script
+The script lists all EKS clusters in the region with `list_clusters()` and gets the details of each cluster with `describe_cluster()`: status, API endpoint and Kubernetes version.
+
+```python
+    import boto3
+
+    client = boto3.client('eks', region_name="eu-central-1")
+    clusters = client.list_clusters()['clusters']
+
+    for cluster in clusters:
+        response = client.describe_cluster(
+            name=cluster
+        )
+        cluster_info = response['cluster']
+        cluster_status = cluster_info['status']
+        cluster_endpoint = cluster_info['endpoint']
+        cluster_version = cluster_info['version']
+        print(f"Cluster {cluster} status is {cluster_status}\nCluster endpoint:{cluster_endpoint}\nCluster version: {cluster_version}")
+```
+
+#### Execution
+Status, endpoint and version of the new cluster:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/03-automate-display-eks/eks-check.py
+    Cluster myapp-eks-cluster status is ACTIVE
+    Cluster endpoint:https://E6719366FF375E2340E8C825A540B76C.gr7.eu-central-1.eks.amazonaws.com
+    Cluster version: 1.33
+```
+
+</details>
+
+******
+
+<details>
+<summary>Demo Project: Data Backup & Restore</summary>
+ <br />
+
+### Demo Executed: Scheduled Snapshots of Production EC2 Volumes
+
+#### Preparation
+Created 2 EC2 instances with Terraform in Frankfurt (`eu-central-1a`), tagged as `prod` and `dev`. The same tags were also added to their EBS volumes (`volume_tags`), so the volumes can be filtered by tag.
+
+#### Backup Script
+The script gets the volumes with `describe_volumes()`, filtered by the tag `Name=prod`, and creates a snapshot of each volume with `create_snapshot()`. The `schedule` package runs the backup every 20 seconds (short interval only for the demo).
+
+```python
+    import boto3
+    import schedule
+
+    ec2_client = boto3.client('ec2', region_name="eu-central-1")
+
+    def create_volume_snapshots():
+        volumes = ec2_client.describe_volumes(
+            Filters=[
+                {
+                    'Name': 'tag:Name',
+                    'Values': ['prod']
+                }
+            ]
+        )
+        for volume in volumes['Volumes']:
+            new_snapshot = ec2_client.create_snapshot(
+                VolumeId=volume['VolumeId']
+            )
+            print(new_snapshot)
+
+    schedule.every(20).seconds.do(create_volume_snapshots)
+
+    while True:
+        schedule.run_pending()
+```
+
+#### Execution
+Only the volume of the `prod` server (`vol-00b821a5e6eb7006b`) is backed up, a new snapshot is created on every run:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/04-automate-backup-restore/volume-backups.py
+    {'Tags': [], 'SnapshotId': 'snap-0ef771913ca01adb3', 'VolumeId': 'vol-00b821a5e6eb7006b', 'State': 'pending', 'StartTime': datetime.datetime(2026, 10, 6, 13, 2, 1, 97000, tzinfo=tzutc()), ..., 'VolumeSize': 8, 'Encrypted': False, 'ResponseMetadata': {...}}
+    {'Tags': [], 'SnapshotId': 'snap-073d147c6e34cac72', 'VolumeId': 'vol-00b821a5e6eb7006b', 'State': 'pending', 'StartTime': datetime.datetime(2026, 10, 6, 13, 2, 21, 714000, tzinfo=tzutc()), ..., 'VolumeSize': 8, 'Encrypted': False, 'ResponseMetadata': {...}}
+```
+
+### Demo Executed: Keep Only the Latest 2 Snapshots per Volume
+
+#### Preparation
+Used the same `prod` and `dev` EC2 instances and the snapshots created in the backup demo. Before the cleanup there were 6 snapshots: 4 of the `prod` volume and 2 of the `dev` volume.
+
+#### Cleanup Script
+The script gets the `prod` volumes with `describe_volumes()` and, for each volume, its snapshots with `describe_snapshots()`. `OwnerIds=['self']` returns only my own snapshots (not public AWS snapshots), and the `volume-id` filter limits the list to that volume. The snapshots are sorted by `StartTime` (newest first) with `itemgetter`, and everything except the first 2 is deleted with `delete_snapshot()`.
+
+```python
+    import boto3
+    from operator import itemgetter
+
+    ec2_client = boto3.client('ec2', region_name="eu-central-1")
+
+    volumes = ec2_client.describe_volumes(
+        Filters=[
+            {
+                'Name': 'tag:Name',
+                'Values': ['prod']
+            }
+        ]
+    )
+
+    for volume in volumes['Volumes']:
+        snapshots= ec2_client.describe_snapshots(
+            OwnerIds=['self'],
+            Filters=[
+                    {
+                        'Name': 'volume-id',
+                        'Values': [volume['VolumeId']]
+                    }
+                ]
+        )
+
+        sorted_by_date = sorted(snapshots['Snapshots'], key=itemgetter('StartTime'), reverse=True)
+
+        for snap in sorted_by_date[2:]:
+            response = ec2_client.delete_snapshot(
+                SnapshotId=snap['SnapshotId']
+            )
+            print(response)
+```
+
+#### Execution
+The first version sorted all snapshots together, without the volume loop. It kept the latest 2 snapshots overall (both from `prod`) and deleted the other 4, so the `dev` volume lost all its backups:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/04-automate-backup-restore/cleanup-snapshots.py
+    {'ResponseMetadata': {..., 'HTTPStatusCode': 200, ...}}
+    {'ResponseMetadata': {..., 'HTTPStatusCode': 200, ...}}
+    {'ResponseMetadata': {..., 'HTTPStatusCode': 200, ...}}
+    {'ResponseMetadata': {..., 'HTTPStatusCode': 200, ...}}
+```
+
+| Volume | Snapshot | StartTime | Result |
+|---|---|---|---|
+| prod | `snap-073d147c6e34cac72` | 13:02:21 | kept |
+| prod | `snap-0ef771913ca01adb3` | 13:02:01 | kept |
+| prod | `snap-031a7e1a0d2c90669` | 12:54:28 | deleted |
+| dev | `snap-0fb9e6c4bf211daec` | 12:54:28 | deleted |
+| prod | `snap-08e4ebcc0f6e3458e` | 12:50:13 | deleted |
+| dev | `snap-08dea95a0175d86eb` | 12:50:13 | deleted |
+
+### Demo Executed: Restore an EC2 Volume from the Latest Snapshot
+
+#### Preparation
+Used the same `prod` and `dev` EC2 instances and the snapshots left after the cleanup demo. The restore was done for the `prod` server (`i-0f98507bffe8e0a67`).
+
+#### Restore Script
+* Gets the volume attached to the instance with `describe_volumes()` and the `attachment.instance-id` filter.
+* Gets the snapshots of that volume and picks the latest one (sorted by `StartTime`).
+* Creates a new volume from the snapshot with `create_volume()` in the same AZ as the instance (`eu-central-1a`) and tags it as `prod`.
+* A new volume can only be attached when it is `available`. The script checks the state in a loop and attaches the volume to the instance as `/dev/xvdb` with the boto3 resource (`Instance.attach_volume()`).
+
+```python
+    import boto3
+    from operator import itemgetter
+
+    ec2_client = boto3.client('ec2', region_name="eu-central-1")
+    ec2_resource = boto3.resource('ec2', region_name="eu-central-1")
+
+    instance_id = "i-0f98507bffe8e0a67"
+
+    volumes = ec2_client.describe_volumes(
+        Filters=[
+            {
+                'Name': 'attachment.instance-id',
+                'Values': [instance_id]
+            }
+        ]
+    )
+
+    instance_volume = volumes['Volumes'][0]
+
+    snapshots = ec2_client.describe_snapshots(
+        OwnerIds=['self'],
+        Filters=[
+            {
+                'Name': 'volume-id',
+                'Values': [instance_volume['VolumeId']]
+            }
+        ]
+    )
+
+    latest_snapshot = sorted(snapshots['Snapshots'], key=itemgetter('StartTime'), reverse=True)[0]
+    print(latest_snapshot['StartTime'])
+
+    new_volume = ec2_client.create_volume(
+        SnapshotId=latest_snapshot['SnapshotId'],
+        AvailabilityZone="eu-central-1a",
+        TagSpecifications=[
+            {
+                'ResourceType': 'volume',
+                'Tags': [
+                    {
+                        'Key': 'Name',
+                        'Value': 'prod'
+                    }
+                ]
+            }
+        ]
+    )
+
+    while True:
+        vol = ec2_resource.Volume(new_volume['VolumeId'])
+        print(vol.state)
+        if vol.state == 'available':
+            ec2_resource.Instance(instance_id).attach_volume(
+                VolumeId=new_volume['VolumeId'],
+                Device='/dev/xvdb'
+            )
+            break
+```
+
+#### Execution
+The latest snapshot of the `prod` volume was used. The new volume stayed in `creating` state for a few seconds, then it was attached to the instance as soon as it became `available`:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/04-automate-backup-restore/restore-volume.py
+    2026-10-06 13:02:21.714000+00:00
+    creating
+    creating
+    creating
+    creating
+    creating
+    creating
+    available
+```
+
+#### UI View
+AWS console after the restore:
+
+<img width="1907" height="910" alt="image" src="https://github.com/user-attachments/assets/d7bd7481-8ed8-40d1-aa74-1ffd20d88505" />
+
+</details>
+
+******
+
+<details>
+<summary>Demo Project: Website Monitoring and Recovery</summary>
+ <br />
+
+### Demo Executed: Website Monitoring - Validate the Application Response
+
+#### Preparation: Server on Linode
+Created a Linode server with Debian 13 and added my SSH public key during creation. Installed Docker from the official Docker apt repository and started an nginx container on port `8080`.
+
+```bash
+    root@localhost:~# apt update
+    root@localhost:~# apt install ca-certificates curl
+    root@localhost:~# install -m 0755 -d /etc/apt/keyrings
+    root@localhost:~# curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    root@localhost:~# chmod a+r /etc/apt/keyrings/docker.asc
+    root@localhost:~# tee /etc/apt/sources.list.d/docker.sources <<EOF
+    Types: deb
+    URIs: https://download.docker.com/linux/debian
+    Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+    Components: stable
+    Architectures: $(dpkg --print-architecture)
+    Signed-By: /etc/apt/keyrings/docker.asc
+    EOF
+    root@localhost:~# apt update
+    root@localhost:~# apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    root@localhost:~# docker run -d -p 8080:80 nginx
+    root@localhost:~# docker ps
+    CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                                     NAMES
+    7c20fbfa5125   nginx     "/docker-entrypoint.…"   9 seconds ago   Up 8 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   fervent_wiles
+```
+
+#### Monitoring Script
+The script runs locally (WSL) and sends an HTTP GET request to the nginx website with the `requests` package. If the status code is `200`, the application is up.
+
+```python
+    import requests
+
+    response = requests.get('http://172-105-246-115.ip.linodeusercontent.com:8080/')
+
+    if response.status_code == 200:
+        print('All good!')
+    else:
+        print('App down, fix it..')
+```
+
+#### Execution
+The website returns `200`:
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-health.py
+    All good!
+```
+
+### Demo Executed: Email Notification When the Website Is Down
+
+#### Gmail Configuration
+Gmail no longer supports "Less secure app access", so a normal account password can't be used for SMTP login. I enabled 2-Step Verification on my Google account and created an **App Password**, which is used only by this script.
+
+#### Credentials as Environment Variables
+The email address and the App Password are not written in the code. They are set as environment variables (`EMAIL_ADDRESS`, `EMAIL_PASSWORD`) and read in the script with `os.environ.get()`.
+
+#### Monitoring Script with Email Notification
+* `send_notification()` connects to `smtp.gmail.com` on port `587`, starts TLS, logs in and sends the email to my own address.
+* An email is sent in two cases:
+    * the website responds, but the status code is not `200`,
+    * the website is not reachable at all (connection error, caught with `try/except`).
+* In the message, the subject and the body are separated by an empty line (`\n\n`).
+
+```python
+    import requests
+    import smtplib
+    import os
+
+    EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+    EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+
+    def send_notification(email_msg):
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            message = f"Subject: SITE DOWN\n\n{email_msg}"
+            smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, message)
+
+    try:
+        response = requests.get('http://172-105-246-115.ip.linodeusercontent.com:8080/')
+        if response.status_code == 200:
+            print('All good!')
+        else:
+            print('App down, fix it..')
+            msg = f"App returned {response.status_code}, fix it!"
+            send_notification(msg)
+
+    except Exception as ex:
+        print(f'connection error.. {ex}')
+        msg = f"App not accessible.. fix it!"
+        send_notification(msg)
+```
+
+#### Execution
+Application up, then application returning a non-`200` status code:
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    All good!
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    App down, fix it..
+```
+
+Stopped the nginx container on the server to simulate an application crash:
+```bash
+    root@localhost:~# docker stop 7c20fbfa5125
+    7c20fbfa5125
+```
+
+The connection is refused, the exception is caught and the email is sent:
+```bash
+    (.venv) root@PC:~/modules/python-automation/05-web-monitoring# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-email.py
+    connection error.. HTTPConnectionPool(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPConnection(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+```
+
+#### Email Notification Received
+<img width="1699" height="386" alt="image" src="https://github.com/user-attachments/assets/7bb745cd-3c7b-4a81-a95d-ea35988a9aca" />
+
+### Demo Executed: Automated Recovery - Restart Application and Reboot Server
+
+#### Preparation
+* Created a Personal Access Token in Linode and set it as an environment variable (`LINODE_TOKEN`), next to the email credentials.
+* The script connects to the server with my SSH key, so the public key was added to the server's `authorized_keys`.
+* Installed `paramiko` (SSH client), `linode_api4` (Linode API) and `schedule` in the virtual environment.
+
+#### Monitoring and Recovery Script
+The script from the previous demo was extended with two recovery steps and split into functions:
+
+* `restart_container()` – connects to the server via SSH with `paramiko` and runs `docker start` for the nginx container.
+* `restart_server_and_container()` – reboots the server through the Linode API (`linode_api4`). It checks the server status in a loop; when the status is `running`, it waits 10 seconds and restarts the container.
+* `monitor_application()`:
+    * status code is not `200` → send email + restart the container,
+    * application not reachable (exception) → send email + reboot the server + restart the container.
+* The `schedule` package runs `monitor_application()` every 5 minutes.
+
+```python
+    import requests
+    import smtplib
+    import os
+    import paramiko
+    import linode_api4
+    import time
+    import schedule
+
+    EMAIL_ADDRESS = os.environ.get('EMAIL_ADDRESS')
+    EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+    LINODE_TOKEN = os.environ.get('LINODE_TOKEN')
+
+    def send_notification(email_msg):
+        print("Sending an email...")
+        with smtplib.SMTP('smtp.gmail.com', 587) as smtp:
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            message = f"Subject: SITE DOWN\n\n{email_msg}"
+            smtp.sendmail(EMAIL_ADDRESS, EMAIL_ADDRESS, message)
+
+    def restart_container():
+        print("Restarting the app...")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+        ssh.connect(hostname='172.105.246.115', username='root', key_filename='/root/.ssh/id_rsa')
+        stdin, stdout, stderr = ssh.exec_command('docker start 7c20fbfa5125')
+        print(stdout.readlines())
+        ssh.close()
+        print('App restarted')
+
+    def restart_server_and_container():
+        #restart linode server
+        print("Rebooting the server...")
+        client = linode_api4.LinodeClient(LINODE_TOKEN)
+        nginx_server = client.load(linode_api4.Instance, 107576750)
+        nginx_server.reboot()
+
+        #restart the app
+        while True:
+            nginx_server = client.load(linode_api4.Instance, 107576750)
+            if nginx_server.status == 'running':
+                time.sleep(10)
+                restart_container()
+                break
+
+    def monitor_application():
+        try:
+            response = requests.get('http://172-105-246-115.ip.linodeusercontent.com:8080/')
+            if response.status_code == 200:
+                print('All good!')
+            else:
+                print('App down, fix it..')
+                msg = f"App returned {response.status_code}, fix it!"
+                send_notification(msg)
+                restart_container()
+        except Exception as ex:
+            print(f'connection error.. {ex}')
+            msg = f"App not accessible.. fix it!"
+            send_notification(msg)
+            restart_server_and_container()
+
+
+    schedule.every(5).minutes.do(monitor_application)
+
+    while True:
+        schedule.run_pending()
+```
+
+#### Execution
+Stopped the nginx container on the server to simulate an application crash:
+```bash
+    root@localhost:~# docker stop 7c20fbfa5125
+    7c20fbfa5125
+```
+
+The script detected the connection error, sent the email, rebooted the server via the Linode API and started the container again over SSH (single run, before the scheduler was added):
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-restart-final.py
+    connection error.. HTTPConnectionPool(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Max retries exceeded with url: / (Caused by NewConnectionError("HTTPConnection(host='172-105-246-115.ip.linodeusercontent.com', port=8080): Failed to establish a new connection: [Errno 111] Connection refused"))
+    Sending an email...
+    Rebooting the server...
+    Restarting the app...
+    ['7c20fbfa5125\n']
+    App restarted
+```
+
+With the scheduler, the application is checked every 5 minutes:
+```bash
+    (.venv) root@PC:~/modules/python-automation# /root/modules/python-automation/.venv/bin/python /root/modules/python-automation/05-web-monitoring/monitor-restart-final.py
+    All good!
+    All good!
+```
+
+</details>
+
+******

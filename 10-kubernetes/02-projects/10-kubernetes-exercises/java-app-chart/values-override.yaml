@@ -1,0 +1,27 @@
+appName: java-app
+appReplicas: 3
+registrySecret: my-registry-key
+appContainerName: javamysqlapp
+appImage: emrearabacioglu/java-app
+appVersion: "v3"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData:
+  DB_SERVER: mysql-primary
+
+secretName: db-secret
+secretData:
+  DB_USER: root
+  DB_PWD: "XzGu3Cxfcn"
+  DB_NAME: "my-app-db"
+  MYSQL_ROOT_PASSWORD: "XzGu3Cxfcn"
+
+regularData: {}
+
+ingress:
+  hostName: ""
+  pathType: Prefix
+  path: /
