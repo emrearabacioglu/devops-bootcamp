@@ -8,3 +8,4 @@
 #tf variable files
 # *.tfvars  (only CIDR ranges here, no secrets)
 .terraform.tfstate.lock.info
+!environments/*.tfvars
