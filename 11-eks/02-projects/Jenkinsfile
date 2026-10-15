@@ -3,7 +3,7 @@
 pipeline {
     agent any
     tools {
-        maven 'gradle-8'
+        gradle 'gradle-8'
     }
     environment {
         DOCKER_REPO_SERVER = '731872836472.dkr.ecr.eu-central-1.amazonaws.com'
