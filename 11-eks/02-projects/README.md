@@ -157,7 +157,8 @@ To https://github.com/emrearabacioglu/devops-bootcamp.git
 Finished: SUCCESS
 ```
 
-IMAGE HERE**********************************
+<img width="1240" height="421" alt="image" src="https://github.com/user-attachments/assets/08f9aebf-149d-4399-b16b-20e127844c6c" />
+
 
 MySQL and phpMyAdmin run on the EC2 nodes, the three java-app pods on Fargate nodes:
 
