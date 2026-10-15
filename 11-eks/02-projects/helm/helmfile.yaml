@@ -1,0 +1,20 @@
+repositories:
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+releases:
+  - name: mysql
+    namespace: default
+    chart: bitnami/mysql
+    values:
+      - values/mysql-values.yaml
+
+  - name: phpmyadmin
+    namespace: default
+    chart: ./charts/phpmyadmin
+
+  - name: java-app
+    namespace: my-app        # Fargate profile namespace
+    chart: ./charts/java-app
+    values:
+      - values/java-app-values.yaml

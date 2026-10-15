@@ -1,10 +1,8 @@
-# leftovers that must never be committed
-_to_delete/
-
 # OS / IDE
 .DS_Store
 .vscode/
 .idea/
+
 
 # python
 .venv/
@@ -29,5 +27,5 @@ kubeconfig_*
 *.tfstate.*
 *.tfvars
 
-# real LKE token (read-only file, can't be masked in place)
+
 10-kubernetes/02-projects/10-kubernetes-exercises/my-app-kubeconfig.yaml

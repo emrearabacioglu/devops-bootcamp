@@ -1,0 +1,16 @@
+appName: java-app
+appReplicas: 1
+appContainerName: javamysqlapp
+appImage: emrearabacioglu/java-app
+appVersion: "v3"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData: {}
+
+secretName: db-secret
+secretData: {}
+  
+regularData: {}

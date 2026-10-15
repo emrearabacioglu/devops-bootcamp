@@ -1,0 +1,85 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent any
+    tools {
+        maven 'maven-3.9' //GRADLE TOOL YAZILACAK********************************************
+    }
+    environment {
+        DOCKER_REPO_SERVER = '731872836472.dkr.ecr.eu-central-1.amazonaws.com'
+        DOCKER_REPO = "${DOCKER_REPO_SERVER}/java-app"
+    }
+    stages {
+        stage('increment version') {
+            steps {
+                script {
+                    echo 'incrementing app version...'
+
+                    def content = readFile('11-eks/02-projects/java-app/build.gradle')
+                    def version = (content =~ /(?m)^version '(.+)'/)[0][1]
+                    def parts = version.split('\\.')
+                    def major = parts[0].toInteger()
+                    def minor = parts[1].toInteger()
+                    def patch = parts[2].toInteger()
+                    // def newVersion = "${major}.${minor}.${patch + 1}"   // PATCH
+                    def newVersion = "${major}.${minor + 1}.0"          // MINOR
+                    // def newVersion = "${major + 1}.0.0"                 // MJAOR
+
+                    env.IMAGE_NAME = "$newVersion-$BUILD_NUMBER"
+                    writeFile(file: '11-eks/02-projects/java-app/build.gradle', text: content.replaceFirst(/(?m)^version '.+'/, "version '${newVersion}'"))
+                }
+            }
+        }
+        stage('build app') {
+            steps {
+                script {
+                    echo 'building the application...'
+                    dir('11-eks/02-projects/java-app'){
+                        sh 'gradle clean build'
+                    }
+                }
+            }
+        }
+        stage('build image') {
+            environment {
+                AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_access_secret_key')
+            }
+            steps {
+                script {
+                    echo "building the docker image..."
+                    sh "docker build -t ${DOCKER_REPO}:${IMAGE_NAME} 11-eks/02-projects/java-app"
+                    sh "aws ecr get-login-password --region eu-central-1 | docker login -u AWS --password-stdin ${DOCKER_REPO_SERVER}"
+                    sh "docker push ${DOCKER_REPO}:${IMAGE_NAME}"
+                }
+            }
+        }
+        stage('deploy') {
+            environment {
+                AWS_ACCESS_KEY_ID = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_access_secret_key')
+            }
+            steps {
+                script {
+                   echo 'deploying to EKS...'
+                   sh 'aws eks update-kubeconfig --name app-cluster --region eu-central-1'
+                   dir('11-eks/02-projects/helm'){
+                    sh "helmfile sync --set appVersion=${IMAGE_NAME}"
+                   }
+                }
+            }
+        }
+        stage('commit version update'){
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'github-credentials', passwordVariable: 'PASS', usernameVariable: 'USER')]){
+                        sh "git remote set-url origin https://${USER}:${PASS}@github.com/emrearabacioglu/devops-bootcamp.git"
+                        sh 'git add 11-eks/02-projects/java-app/build.gradle'
+                        sh 'git commit -m "ci: version bump"'
+                        sh 'git push origin HEAD:main'
+                    }
+                }
+            }
+        }
+    }
+}
