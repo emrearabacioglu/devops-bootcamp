@@ -10,7 +10,7 @@ resource "helm_release" "mysql" {
   set_sensitive = [{
     name  = "auth.rootPassword"
     value = var.mysql_root_password
-    type = "string"
+    type  = "string"
   }]
 
   depends_on = [module.eks]

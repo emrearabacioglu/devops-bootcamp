@@ -39,6 +39,8 @@ module "eks" {
       min_size       = 2
       max_size       = 4
       desired_size   = 3
+
+      attach_cluster_primary_security_group = true
     }
   }
 
