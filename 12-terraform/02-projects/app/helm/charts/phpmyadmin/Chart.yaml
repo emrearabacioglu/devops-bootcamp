@@ -1,0 +1,4 @@
+apiVersion: v2
+name: phpmyadmin
+description: phpMyAdmin for the MySQL release
+version: 0.1.0

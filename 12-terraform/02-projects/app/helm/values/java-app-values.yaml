@@ -1,0 +1,21 @@
+appName: java-app
+appReplicas: 3
+registrySecret: my-registry-key
+appContainerName: javamysqlapp
+appImage: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-app
+appVersion: "1.0.0"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData:
+  DB_SERVER: mysql-primary.default
+
+secretName: db-secret
+secretData:
+  DB_USER: root
+  DB_PWD: "123"
+  DB_NAME: "my-app-db"
+
+regularData: {}

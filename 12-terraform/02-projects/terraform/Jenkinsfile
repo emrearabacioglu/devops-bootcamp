@@ -1,0 +1,50 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ENV', choices: ['dev', 'test', 'staging'], description: 'Select environment')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Create/update or delete')
+    }
+
+    environment {
+        AWS_ACCESS_KEY_ID          = credentials('jenkins_aws_access_key_id')
+        AWS_SECRET_ACCESS_KEY      = credentials('jenkins_aws_access_secret_key')
+        TF_VAR_mysql_root_password = credentials('mysql-root-password')
+        TF_IN_AUTOMATION           = 'true'
+        TF_DIR                     = '12-terraform/02-projects/terraform'
+    }
+
+    stages {
+        stage('init') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh 'aws sts get-caller-identity'
+                    sh 'terraform init -input=false'
+                    sh "terraform workspace select -or-create ${params.ENV}"
+                }
+            }
+        }
+        stage('plan') {
+            steps {
+                dir("${TF_DIR}") {
+                    script {
+                        def destroyFlag = params.ACTION == 'destroy' ? '-destroy' : ''
+                        sh "terraform plan -input=false ${destroyFlag} -var-file=environments/${params.ENV}.tfvars -out=tfplan"
+                    }
+                }
+            }
+        }
+        stage('approve') {
+            steps {
+                input message: "Run ${params.ACTION} on ${params.ENV}?", ok: 'Yes'
+            }
+        }
+        stage('apply') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh 'terraform apply -input=false tfplan'
+                }
+            }
+        }
+    }
+}
