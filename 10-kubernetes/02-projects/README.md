@@ -178,7 +178,7 @@ data:
 root@PC:~/k8s-exercises# DOCKER_REGISTRY_SERVER=docker.io
 root@PC:~/k8s-exercises# DOCKER_USER=emrearabacioglu
 root@PC:~/k8s-exercises# DOCKER_EMAIL=emrearabacolu@gmail.com
-root@PC:~/k8s-exercises# DOCKER_PASSWORD=Docker.123
+root@PC:~/k8s-exercises# DOCKER_PASSWORD=******
 
 root@PC:~/k8s-exercises# export KUBECONFIG=~/k8s-exercises/my-app-kubeconfig.yaml
 
