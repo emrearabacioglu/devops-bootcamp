@@ -19,9 +19,6 @@ def get_all_repos():
         repo_list.append(repo["repositoryName"])
     return repo_list
 
-repos_list = get_all_repos()
-for i in repos_list: print(f"Repo name: {i}")
-
 def sort_images(repo_name):
     response = ecr_client.describe_images(repositoryName=repo_name, filter={"tagStatus":"TAGGED"})
     images = response["imageDetails"]
@@ -34,4 +31,7 @@ def sort_images(repo_name):
     print(f"\nImages in repository: {repo_name}")
     for i in sorted(image_list, key=lambda date: date["Date pushed"], reverse=True): print(f"Tags: {i["Tags"]} Date pushed: {i["Date pushed"].strftime("%Y-%m-%d %H:%M:%S")}")
     
+    
+repos_list = get_all_repos()
+for i in repos_list: print(f"Repo name: {i}")
 sort_images(repos_list[0])
