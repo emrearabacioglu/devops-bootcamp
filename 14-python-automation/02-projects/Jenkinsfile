@@ -1,0 +1,55 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent any
+    environment {
+    AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+    AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+    AWS_DEFAULT_REGION    = 'eu-central-1'
+
+    REPO_NAME = 'nginx-app'
+    EC2_HOST  = '18.184.79.69'
+    APP_PORT  = '8080'
+    }
+    stages {
+        stage('Fetch Images') {
+            steps {
+                script {
+                    env.IMAGE_TAGS = sh(
+                        script: 'python3 14-python-automation/02-projects/exc5-1-fetch_images.py',
+                        returnStdout: true).trim()
+                    echo "Available tags:\n${env.IMAGE_TAGS}"
+                }
+            }
+        }
+        stage('Select version') {
+            steps {
+                script {
+                    env.IMAGE_TAG = input(
+                        message: 'Select image tag',
+                        parameters: [choice(name: 'TAG', choices: env.IMAGE_TAGS)]
+                    )
+                    echo "selected: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+        stage('Deploy with python') {
+            
+            steps {
+                echo 'ssh to server and deploy'
+                withCredentials([sshUserPrivateKey(credentialsId:'ec2-python-key',keyFileVariable:'SSH_KEY_FILE',usernameVariable:'SSH_USER')]){
+                    sh 'python3 14-python-automation/02-projects/exc5-2-deploy.py'
+                }
+            }
+        }
+        stage('Validate') {
+            steps {
+                script {
+                    echo 'checking app status..'
+                    sh 'python3 14-python-automation/02-projects/exc5-3-validate.py'
+                }
+            }
+        }
+    }
+}
+

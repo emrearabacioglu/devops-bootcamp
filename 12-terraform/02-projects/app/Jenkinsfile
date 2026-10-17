@@ -61,11 +61,11 @@ pipeline {
             }
             steps {
                 script {
-                   echo 'deploying to EKS...'
-                   sh 'aws eks update-kubeconfig --name dev-myapp-eks-cluster --region eu-central-1'
-                   dir('12-terraform/02-projects/app/helm'){
+                    echo 'deploying to EKS...'
+                    sh 'aws eks update-kubeconfig --name dev-myapp-eks-cluster --region eu-central-1'
+                    dir('12-terraform/02-projects/app/helm'){
                     sh "helmfile sync --set appVersion=${IMAGE_NAME}"
-                   }
+                    }
                 }
             }
         }
