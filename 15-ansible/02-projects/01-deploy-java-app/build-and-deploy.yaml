@@ -1,0 +1,76 @@
+---
+- name: Build Java app
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build Jar with gradle
+      ansible.builtin.command: gradle bootJar
+      args:
+        chdir: "{{ playbook_dir }}/app"
+
+- name: Create linux user and check/install java
+  hosts: ubuntu
+  become: True
+  tasks:
+  - name: create user
+    ansible.builtin.user:
+      name: "{{ linux_user }}"
+      group: adm
+
+  - name: update apt repo cache
+    ansible.builtin.apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+  - name: Install Java
+    ansible.builtin.apt: name=openjdk-17-jre-headless
+  - name: Install acl (needed for become_user)
+    ansible.builtin.apt: name=acl
+
+- name: Clear old file and stop running java app
+  hosts: ubuntu
+  become: True
+  become_user: "{{ linux_user }}"
+  tasks:
+  - name: Find jar file
+    ansible.builtin.find:
+      paths: /home/{{ linux_user }}
+      patterns: "*.jar"
+      file_type: file
+    register: jar_files
+  - ansible.builtin.debug: msg={{ jar_files }}
+
+  - name: get java app's process id
+    ignore_errors: yes
+    ansible.builtin.shell: "ps -few | grep java | awk '{print $2}'"
+    register: running_java_processes
+    when: jar_files.files != []
+  - ansible.builtin.debug: msg={{ running_java_processes }}
+
+  - name: Kill Java processes
+    ignore_errors: True
+    ansible.builtin.shell: " kill {{ running_java_processes.stdout_lines[0] }}"
+    when: running_java_processes is not skipped and running_java_processes.stdout_lines | length > 2
+
+  - name: remove old jar
+    ansible.builtin.shell: "rm {{ jar_files.files[0].path }}"
+    when: jar_files.files != []
+
+- name: Deploy java application
+  hosts: ubuntu
+  become: True
+  become_user: "{{ linux_user }}"
+  tasks:
+  - name: Copy jar file to remote server
+    ansible.builtin.copy:
+      src: "{{ project_dir }}/app/build/libs/{{ jar_name }}"
+      dest: /home/{{ linux_user }}
+  - name: Start the application
+    ansible.builtin.command: 
+      chdir: /home/{{ linux_user }}
+      cmd: java -jar {{ jar_name }} & 
+    async: 1000
+    poll: 0
+    register: result
+  - ansible.builtin.debug: msg="{{ result }}"  
+  - name: Check that application started and is running
+    ansible.builtin.shell: ps aux | grep java
+    register: app_status
+  - ansible.builtin.debug: msg="{{ app_status.stdout_lines }}"  
