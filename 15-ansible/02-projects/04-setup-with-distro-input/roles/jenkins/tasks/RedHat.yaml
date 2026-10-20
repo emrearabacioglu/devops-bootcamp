@@ -1,0 +1,20 @@
+---
+- name: install jenkins repo
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/rpm-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+- name: import rpm key
+  ansible.builtin.rpm_key: 
+    key: https://pkg.jenkins.io/rpm-stable/repodata/repomd.xml.key
+    state: present
+
+- name: Install packages
+  ansible.builtin.dnf: 
+    update_cache: true
+    name:
+      - java-21-amazon-corretto
+      - fontconfig
+      - jenkins
+      - docker
+      - nodejs
+      - nodejs-npm
