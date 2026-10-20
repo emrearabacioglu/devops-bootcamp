@@ -4,6 +4,16 @@
   gather_facts: false
   vars_files: os_config.yaml
   tasks:
+    - name: Get my public IP
+      ansible.builtin.uri:
+        url: https://checkip.amazonaws.com
+        return_content: true
+      register: ip_result
+
+    - name: Set my_ip
+      ansible.builtin.set_fact:
+        my_ip: "{{ ip_result.content | trim }}"
+
     - name: Set up key pair
       amazon.aws.ec2_key:
         name: ansible-key

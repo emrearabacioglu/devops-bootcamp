@@ -1,0 +1,6 @@
+---
+- name: Setup Jenkins
+  hosts: "tag_OS_{{os | default('*')}}"
+  become: true
+  roles:
+    - jenkins
