@@ -4,11 +4,9 @@ os_config:
     server_name: jenkins-amazon-server
     image_parameter: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
     os_tag: amazon
-    ssh_user: ec2-user
     sg_name: amazon-sg
   ubuntu:
     server_name: jenkins-ubuntu-server
     image_parameter: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
     os_tag: ubuntu
-    ssh_user: ubuntu
     sg_name: ubuntu-sg
