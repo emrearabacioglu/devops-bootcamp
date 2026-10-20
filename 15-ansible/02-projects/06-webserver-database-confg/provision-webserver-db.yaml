@@ -1,0 +1,21 @@
+---
+- name: Provision webserver and database server
+  hosts: localhost
+  gather_facts: false
+  tasks: 
+    - name: get default vpc id
+      amazon.aws.ec2_vpc_net_info:
+        region: "{{ aws_region }}"
+        filters:
+          "is-default": "true"
+      register: vpc_info
+    - ansible.builtin.debug: msg="{{vpc_info.vpcs[0].id}}"
+    - ansible.builtin.debug: msg="{{ vpc_info.vpcs[0].cidr_block }}"
+
+    - name: get subnet info
+      amazon.aws.ec2_vpc_subnet_info:
+        region: "{{ aws_region }}"
+        filters: 
+          vpc-id: "{{vpc_info.vpcs[0].id}}"
+      register: subnet_info
+    - ansible.builtin.debug: msg="{{ subnet_info.subnets | map(attribute='cidr_block') | list }}"

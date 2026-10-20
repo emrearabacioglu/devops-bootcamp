@@ -11,4 +11,6 @@ keyed_groups:
   - key: ec2_tags
     prefix: tag
 
+compose:
+  ansible_user: "'ec2-user' if ec2_tags.Role == 'ansible' else 'ubuntu'"
 
