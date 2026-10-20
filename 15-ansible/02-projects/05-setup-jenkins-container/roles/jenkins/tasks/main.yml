@@ -1,0 +1,49 @@
+---
+- include_tasks: "{{ ansible_os_family }}.yaml"
+
+- name: run docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Get docker GID
+  ansible.builtin.getent:
+    database: group
+    key: docker
+
+- name: Copy Dockerfile to server
+  ansible.builtin.copy:
+    src: Dockerfile
+    dest: /opt/jenkins/
+
+- name: Build custom Jenkins Image
+  community.docker.docker_image_build:
+    name: custom-jenkins
+    path: /opt/jenkins
+
+- name: Run jenkins container
+  community.docker.docker_container:
+    name: jenkins
+    image: custom-jenkins
+    state: started
+    restart_policy: unless-stopped
+    published_ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    groups:
+      - "{{ ansible_facts.getent_group.docker[1] }}"
+
+- name: wait for pwd
+  ansible.builtin.wait_for:
+    path:   /var/lib/docker/volumes/jenkins_home/_data/secrets/initialAdminPassword
+
+- name: get pwd 
+  ansible.builtin.slurp:
+    src:   /var/lib/docker/volumes/jenkins_home/_data/secrets/initialAdminPassword
+  register: jenkins_pwd
+
+- ansible.builtin.debug: msg="{{ jenkins_pwd.content | b64decode }}"

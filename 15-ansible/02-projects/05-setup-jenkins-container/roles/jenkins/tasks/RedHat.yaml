@@ -1,0 +1,8 @@
+---
+- name: Install Docker in amazon
+  ansible.builtin.dnf: 
+    update_cache: true
+    name:
+      - docker
+      - python3-requests
+
