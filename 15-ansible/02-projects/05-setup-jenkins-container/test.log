@@ -172,10 +172,10 @@ ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
 
 TASK [jenkins : ansible.builtin.debug] *****************************************
 ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com] => {
-    "msg": "e8dc3cfc1d0145999d8a98bcce98aa4d\n"
+    "msg": "**password**\n"
 }
 ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com] => {
-    "msg": "23dad32fee064e58ad20e21c63922929\n"
+    "msg": "**password**\n"
 }
 
 PLAY RECAP *********************************************************************
@@ -240,10 +240,10 @@ ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
 
 TASK [jenkins : ansible.builtin.debug] *****************************************
 ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com] => {
-    "msg": "e8dc3cfc1d0145999d8a98bcce98aa4d\n"
+    "msg": "**password**\n"
 }
 ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com] => {
-    "msg": "23dad32fee064e58ad20e21c63922929\n"
+    "msg": "**password**\n"
 }
 
 PLAY RECAP *********************************************************************

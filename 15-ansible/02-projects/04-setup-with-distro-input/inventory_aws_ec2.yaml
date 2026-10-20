@@ -8,8 +8,8 @@ filters:
   instance-state-name: running
 
 keyed_groups:
-  - key: tags
+  - key: ec2_tags
     prefix: tag
 
 compose:
-  ansible_user: "'ubuntu' if tags.OS == 'ubuntu' else 'ec2-user'"
+  ansible_user: "'ubuntu' if ec2_tags.OS == 'ubuntu' else 'ec2-user'"
