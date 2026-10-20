@@ -1,4 +1,4 @@
-# Module 15 – Ansible exercise: Jenkins server on EC2 (Amazon Linux or Ubuntu)
+# Jenkins server on EC2 (Amazon Linux or Ubuntu)
 
 **Technologies:** Ansible (roles, handlers, `aws_ec2` dynamic inventory), AWS (EC2, Security Groups, Key Pairs, SSM Parameter Store), Jenkins, Docker, Node.js, npm, Amazon Linux 2023, Ubuntu 24.04
 
