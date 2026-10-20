@@ -1,2 +1,34 @@
 ---
-include_tasks: "{{ ansible_os_family }}.yaml"
+- include_tasks: "{{ ansible_os_family }}.yaml"
+
+- name: add jenkins user to docker group
+  ansible.builtin.user:
+    name: jenkins
+    groups: docker
+    append: true
+  notify: restart jenkins
+
+- name: run docker
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: run jenkins
+  ansible.builtin.systemd_service:
+    name: jenkins
+    enabled: true
+    state: started
+
+- name: wait for pwd
+  ansible.builtin.wait_for:
+    path: /var/lib/jenkins/secrets/initialAdminPassword
+
+- name: get pwd 
+  ansible.builtin.slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_pwd
+
+- ansible.builtin.debug: msg="{{ jenkins_pwd.content | b64decode }}"
+
+
