@@ -1,57 +1,56 @@
-# Module 15 – Ansible exercise: Jenkins server on EC2 (Amazon Linux or Ubuntu)
+# Jenkins as a Docker container on EC2 (Amazon Linux or Ubuntu)
 
-**Technologies:** Ansible (roles, handlers, `aws_ec2` dynamic inventory), AWS (EC2, Security Groups, Key Pairs, SSM Parameter Store), Jenkins, Docker, Node.js, npm, Amazon Linux 2023, Ubuntu 24.04
+**Technologies:** Ansible (roles, `aws_ec2` dynamic inventory, `community.docker`), Docker, Jenkins, Node.js, npm, AWS (EC2, Security Groups, Key Pairs, SSM Parameter Store), Amazon Linux 2023, Ubuntu 24.04
 
-Ansible code that creates an EC2 server and installs Jenkins on it, with Node.js, npm and Docker available for Jenkins builds. The distro is chosen with `-e os=amazon` or `-e os=ubuntu`, and Jenkins is installed by a single role that picks the right tasks for the server's OS.
+Same goal as [`04-setup-with-distro-input`](../04-setup-with-distro-input): one command creates an EC2 server, another installs Jenkins with Node.js, npm and Docker available for builds. The difference is that Jenkins now runs as a Docker container instead of a system service. Provisioning, the dynamic inventory and destroy are unchanged. Only the `jenkins` role is new.
+
+The host only gets Docker. Everything Jenkins needs for builds (docker CLI, Node.js, npm) is baked into a custom image built from `jenkins/jenkins:lts`, so the inside of the container is the same on both distros.
 
 ## How it works
 
 ```
-provision.yaml -e os=ubuntu            runs on localhost, talks to the AWS API
-  ├─ my public IP        ← checkip.amazonaws.com
-  ├─ key pair ansible-key ← ~/.ssh/id_rsa.pub
-  ├─ security group <os>-sg: 22 from my IP only, 8080 from anywhere
-  └─ EC2 t3.small, AMI read from SSM, tags: Name, OS, Role=jenkins
-                     │
-                     ▼
-inventory_aws_ec2.yaml                 dynamic inventory, no IPs stored anywhere
-  ├─ only running instances with Role=jenkins
-  ├─ groups from tags: tag_OS_amazon, tag_OS_ubuntu
-  └─ ansible_user from the OS tag: ubuntu / ec2-user
-                     │
-                     ▼
-setup-jenkins.yaml [-e os=ubuntu]      hosts: tag_OS_<os>, or tag_OS_* if os is not given
-  └─ role jenkins
-       ├─ facts → ansible_os_family = RedHat | Debian
-       ├─ include RedHat.yaml or Debian.yaml     repo + GPG key + packages
-       └─ common tasks: jenkins user → docker group, start docker and jenkins,
-                        wait for initialAdminPassword and print it
+provision.yaml -e os=ubuntu        EC2 + security group + key pair (same as 04)
+                  │
+                  ▼
+inventory_aws_ec2.yaml             groups tag_OS_amazon / tag_OS_ubuntu, SSH user from the OS tag
+                  │
+                  ▼
+setup-jenkins.yaml [-e os=...]     role jenkins on one OS group or on all Jenkins servers
+  ├─ RedHat.yaml / Debian.yaml     install Docker (docker / docker.io) + python3-requests
+  ├─ start and enable docker
+  ├─ getent group docker           host's docker GID, e.g. 993 on Amazon Linux, 113 on Ubuntu
+  ├─ copy files/Dockerfile → /opt/jenkins/
+  ├─ build image custom-jenkins    jenkins/jenkins:lts + nodejs, npm, docker CLI
+  ├─ run container jenkins
+  │    ports   8080, 50000
+  │    volume  jenkins_home → /var/jenkins_home
+  │    socket  /var/run/docker.sock → /var/run/docker.sock
+  │    groups  <host docker GID>
+  └─ wait for initialAdminPassword in the volume on the host and print it
 ```
 
-| File                                | What it does                                                                                                                                                |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `os_config.yaml`                  | AWS region and the per-OS values: instance name, SSM parameter for the AMI, security group name. Loaded by`provision.yaml` and `destroy-instance.yaml`. |
-| `provision.yaml`                  | Finds the current public IP, imports the SSH key as a key pair, creates the security group and launches the instance.                                       |
-| `inventory_aws_ec2.yaml`          | Asks AWS for running Jenkins instances, groups them by the`OS` tag and sets the SSH user per host.                                                        |
-| `ansible.cfg`                     | Points to the dynamic inventory and the SSH private key, disables host key checking.                                                                        |
-| `setup-jenkins.yaml`              | Runs the`jenkins` role on one OS group or on all Jenkins servers.                                                                                         |
-| `roles/jenkins/tasks/main.yml`    | Includes the OS-specific file, then runs the tasks that are the same on both distros.                                                                       |
-| `roles/jenkins/tasks/RedHat.yaml` | Amazon Linux: Jenkins RPM repo and GPG key, then`dnf` installs Corretto 21, fontconfig, Jenkins, Docker, Node.js and npm.                                 |
-| `roles/jenkins/tasks/Debian.yaml` | Ubuntu: Jenkins key in`/etc/apt/keyrings`, apt repo with `signed-by`, OpenJDK 21 first, then Jenkins, `docker.io`, Node.js and npm.                   |
-| `roles/jenkins/handlers/main.yml` | Restarts Jenkins when the jenkins user is added to the docker group.                                                                                        |
-| `destroy-instance.yaml`           | Terminates the instance, then deletes its security group and the key pair.                                                                                  |
+| File                                                                                                           | What it does                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provision.yaml`, `destroy-instance.yaml`, `os_config.yaml`, `inventory_aws_ec2.yaml`, `ansible.cfg` | Same as in 04: create/delete the server, find it by tags, set the SSH user per OS.                                                           |
+| `setup-jenkins.yaml`                                                                                         | Runs the`jenkins` role on `tag_OS_<os>`, or on every Jenkins server when `os` is not given.                                            |
+| `roles/jenkins/tasks/RedHat.yaml`                                                                            | Amazon Linux: installs`docker` and `python3-requests` with dnf.                                                                          |
+| `roles/jenkins/tasks/Debian.yaml`                                                                            | Ubuntu: installs`docker.io` and `python3-requests` with apt.                                                                             |
+| `roles/jenkins/tasks/main.yml`                                                                               | Includes the OS file, then everything else: Docker service, docker GID, image build, container, password.                                    |
+| `roles/jenkins/files/Dockerfile`                                                                             | Custom image:`jenkins/jenkins:lts` plus `nodejs`, `npm` and `docker.io` (only its CLI is used), back to `USER jenkins` at the end. |
+| `test-all.sh`, `test.log`                                                                                  | Full test run on both distros and its output.                                                                                                |
 
 ### Decisions
 
-- **No duplicate servers on re-run.** `ec2_instance` uses `exact_count: 1` with explicit `filters` on the `Name` tag and the instance state. The module's default filter also compares the AMI ID, so a newer AMI in SSM would launch a second server.
-- **No hardcoded AMI.** The AMI ID is read at runtime from AWS's public SSM parameters, so it is always the latest image for the region.
-- **No saved IPs.** The setup playbook finds the servers through the dynamic inventory by their tags, so a changed IP doesn't break anything.
-- **Tools installed system-wide.** Node.js and npm come from the distro repos (not nvm), so they are in `/usr/bin` and visible to the jenkins user in pipeline `sh` steps.
-- **Destroy is written by hand.** Ansible keeps no state like Terraform, so `destroy-instance.yaml` deletes what `provision.yaml` created, in reverse order. The security group can only be deleted after the instance is terminated.
+- **Custom image instead of installing tools into a running container.** The tools are part of the image, so a recreated container has them right away. Nothing is changed by hand inside the container.
+- **Docker from the host.** The container mounts the host's `/var/run/docker.sock`. The docker CLI inside the container talks to the host's Docker daemon, so images built by Jenkins land on the host.
+- **Socket permission with the numeric GID.** The socket belongs to the host's `docker` group. The jenkins user in the container is not in that group, so the container gets the host's docker GID through `groups`. It must be the number, not the name: a group name would be looked up in the container's own `/etc/group`, while the kernel checks the number. The GID differs per distro (993 on Amazon Linux, 113 on Ubuntu in the test run), so it is read with `getent` on each host instead of being hardcoded.
+- **Named volume for Jenkins data.** Jobs, plugins and settings live in the `jenkins_home` volume and survive a recreated container. The volume sits on the host at `/var/lib/docker/volumes/jenkins_home/_data`, so the initial admin password is read from there with `wait_for` + `slurp`.
+- **Rebuild on Dockerfile changes.** `force_source: true` builds every run. With an unchanged Dockerfile the build cache gives the same image ID and the container is left alone. With a changed Dockerfile the image ID changes and `docker_container` recreates the container from the new image. The data stays in the volume.
+- **`restart_policy: unless-stopped`.** The container comes back after a reboot.
 
 ## Requirements
 
-- Ansible with the `amazon.aws` collection, and `boto3` / `botocore` in the same Python environment
+- Ansible with the `amazon.aws` and `community.docker` collections, and `boto3` / `botocore` in the same Python environment
 - AWS credentials in `~/.aws/credentials` with EC2 and SSM read permissions
 - SSH key pair at `/root/.ssh/id_rsa` and `/root/.ssh/id_rsa.pub`
 
@@ -68,7 +67,7 @@ ansible-playbook provision.yaml -e os=amazon
 ansible-inventory --graph
 ansible all -m ping
 
-# 3. Install Jenkins
+# 3. Install Docker and start the Jenkins container
 ansible-playbook setup-jenkins.yaml -e os=ubuntu   # only the Ubuntu server
 ansible-playbook setup-jenkins.yaml                # every Jenkins server
 
@@ -78,9 +77,25 @@ ansible-playbook destroy-instance.yaml -e os=ubuntu
 
 The initial admin password is printed at the end of step 3. Jenkins is then at `http://<public-ip>:8080`.
 
-Check that the jenkins user can use the build tools:
+Check that the build tools work inside the container, as the jenkins user:
 
 ```bash
-ansible all -b --become-user jenkins -m command -a "docker ps"
-ansible all -b --become-user jenkins -m command -a "npm -v"
+ansible all -b -m command -a "docker exec jenkins docker ps"
+ansible all -b -m command -a "docker exec jenkins npm -v"
 ```
+
+## Testing
+
+`test-all.sh` runs the whole flow on both distros and stops at the first error: syntax check, provision Ubuntu and Amazon Linux, wait for SSH, install Jenkins, run the setup a second time, check that Jenkins answers on port 8080, then run `id`, `docker ps`, `node -v` and `npm -v` inside each container. The servers are left running so Jenkins can be opened in the browser.
+
+```bash
+bash test-all.sh 2>&1 | tee test.log
+```
+
+Results from [`test.log`](./test.log):
+
+- Both servers provisioned and reachable over SSH, each with its own SSH user from the inventory.
+- First setup run installed everything. The second run ended with `changed=0` on both hosts.
+- Jenkins 2.580.1 answered `200` on `/login` on both servers.
+- Inside the containers the jenkins user had the host's docker GID as an extra group (`993` on Amazon Linux, `113` on Ubuntu), and `docker ps` listed the host's containers.
+- Node.js `v20.19.2` and npm `9.2.0` in both containers.
