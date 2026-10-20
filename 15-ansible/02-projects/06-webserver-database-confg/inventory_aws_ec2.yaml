@@ -1,0 +1,14 @@
+---
+plugin : aws_ec2
+regions:
+  - eu-central-1
+
+filters:
+  tag:Name: jenkins
+  instance-state-name: running
+
+keyed_groups:
+  - key: ec2_tags
+    prefix: tag
+
+

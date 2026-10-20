@@ -1,0 +1,31 @@
+---
+- name: Configure instance for ansible
+  hosts: tag_Role_ansible_server
+  tasks:
+    - name: install pip
+      become: true
+      ansible.builtin.dnf:
+        update_cache: true
+        name:
+          - python3-pip
+
+    - name: install ansible and libs
+      extra_args: --user
+      ansible.builtin.pip:
+        name: 
+          - ansible
+          - boto3
+          - botocore
+
+    - name: copy private key
+      ansible.builtin.copy:
+        src: '/root/.ssh/id_rsa'
+        dest: '/home/ec2-user/.ssh/id_rsa'
+        mode: "0600"
+    
+    - name: install mysql roles
+      environment:
+        PATH: "/home/ec2-user/.local/bin:{{ ansible_env.PATH }}"
+      community.general.ansible_galaxy_install: 
+        type: role
+        name: geerlingguy.mysql
