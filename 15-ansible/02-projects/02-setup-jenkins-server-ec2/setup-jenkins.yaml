@@ -1,0 +1,50 @@
+---
+- name: Configure environment for Jenkins
+  hosts: tag_Name_jenkins_ami_server
+  become: true
+  tasks:
+
+  - name: install jenkins repo
+    ansible.builtin.get_url:
+      url: https://pkg.jenkins.io/rpm-stable/jenkins.repo
+      dest: /etc/yum.repos.d/jenkins.repo
+  - name: import rpm key
+    ansible.builtin.rpm_key: 
+      key: https://pkg.jenkins.io/rpm-stable/repodata/repomd.xml.key
+      state: present
+
+  - name: Install packages
+    ansible.builtin.dnf: 
+      update_cache: true
+      name:
+        - java-21-amazon-corretto
+        - fontconfig
+        - jenkins
+        - docker
+        - nodejs
+        - nodejs-npm
+
+  - name: add jenkins user to docker group
+    ansible.builtin.user:
+      name: jenkins
+      groups: docker
+      append: true
+
+  - name: run docker
+    ansible.builtin.systemd_service:
+      name: docker
+      enabled: true
+      state: started
+  - name: run jenkins
+    ansible.builtin.systemd_service:
+      name: jenkins
+      enabled: true
+      state: started
+  - name: wait for pwd
+    ansible.builtin.wait_for:
+      path: /var/lib/jenkins/secrets/initialAdminPassword
+  - name: get pwd 
+    ansible.builtin.slurp:
+      src: /var/lib/jenkins/secrets/initialAdminPassword
+    register: jenkins_pwd
+  - ansible.builtin.debug: msg="{{ jenkins_pwd.content | b64decode }}"

@@ -1,0 +1,9 @@
+---
+- name: test smth
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: ssm_parameter lookup
+      debug:
+        msg: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region='eu-central-1') }}"
+      register: 

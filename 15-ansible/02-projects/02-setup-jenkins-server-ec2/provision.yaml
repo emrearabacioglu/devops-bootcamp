@@ -1,0 +1,41 @@
+---
+- name: Launch EC2 Instance
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Set up key pair
+      amazon.aws.ec2_key:
+        name: ansible-key
+        region: "{{ aws_region }}"
+        key_material: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+        force: false
+    - name: configure sg
+      amazon.aws.ec2_security_group:
+        name: ansible-sg
+        description: sg for ansible lab
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: "{{ my_ip }}/32"
+          - proto: tcp
+            from_port: 8080
+            to_port: 8080
+            cidr_ip: 0.0.0.0/0
+
+    - name: Launch EC2 Instance
+      amazon.aws.ec2_instance:
+        name: jenkins-ami-server
+        key_name: ansible-key
+        instance_type: t3.small
+        security_group: ansible-sg
+        region: {{ aws_region }}
+        image_id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region={{ aws_region }}) }}"
+        filters: 
+          "tag:Name": "jenkins-ami-server"
+          instance-state-name: ["running", "pending"]
+        exact_count: 1
+        tags:
+          Environment: ansible-lab
+          
