@@ -1,0 +1,342 @@
+
+===== Syntax check =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+playbook: provision.yaml
+
+playbook: setup-jenkins.yaml
+
+playbook: destroy-instance.yaml
+
+===== Provision ubuntu + amazon =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Launch EC2 Instance] *****************************************************
+
+TASK [Get my public IP] ********************************************************
+ok: [localhost]
+
+TASK [Set my_ip] ***************************************************************
+ok: [localhost]
+
+TASK [Set up key pair] *********************************************************
+changed: [localhost]
+
+TASK [configure sg] ************************************************************
+changed: [localhost]
+
+TASK [Launch EC2 Instance] *****************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=5    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+PLAY [Launch EC2 Instance] *****************************************************
+
+TASK [Get my public IP] ********************************************************
+ok: [localhost]
+
+TASK [Set my_ip] ***************************************************************
+ok: [localhost]
+
+TASK [Set up key pair] *********************************************************
+ok: [localhost]
+
+TASK [configure sg] ************************************************************
+changed: [localhost]
+
+TASK [Launch EC2 Instance] *****************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Wait for SSH (max 3 min) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | UNREACHABLE!: Task failed: Failed to connect to the host via ssh: ssh: connect to host ec2-3-73-126-108.eu-central-1.compute.amazonaws.com port 22: Connection refused
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.12"},"changed": false,"ping": "pong"}
+not ready yet (1/18)
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.12"},"changed": false,"ping": "pong"}
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.9"},"changed": false,"ping": "pong"}
+
+===== Inventory =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+@all:
+  |--@ungrouped:
+  |--@aws_ec2:
+  |  |--ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+  |  |--ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+  |--@tag_Environment_ansible_lab:
+  |  |--ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+  |  |--ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+  |--@tag_Name_jenkins_ubuntu_server:
+  |  |--ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+  |--@tag_Role_jenkins:
+  |  |--ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+  |  |--ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+  |--@tag_OS_ubuntu:
+  |  |--ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+  |--@tag_OS_amazon:
+  |  |--ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+  |--@tag_Name_jenkins_amazon_server:
+  |  |--ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+
+===== Setup Jenkins on both =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+
+PLAY [Setup Jenkins] ***********************************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : include_tasks] *************************************************
+included: /root/twn/devops-bootcamp-update/15-ansible/02-projects/05-setup-jenkins-container/roles/jenkins/tasks/Debian.yaml for ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+included: /root/twn/devops-bootcamp-update/15-ansible/02-projects/05-setup-jenkins-container/roles/jenkins/tasks/RedHat.yaml for ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+
+TASK [jenkins : Install Docker in ubuntu] **************************************
+changed: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Install Docker in amazon] **************************************
+changed: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : run docker] ****************************************************
+changed: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Get docker GID] ************************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Copy Dockerfile to server] *************************************
+changed: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+changed: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Build custom Jenkins Image] ************************************
+changed: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+changed: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Run jenkins container] *****************************************
+changed: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+changed: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : wait for pwd] **************************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : get pwd] *******************************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : ansible.builtin.debug] *****************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com] => {
+    "msg": "e8dc3cfc1d0145999d8a98bcce98aa4d\n"
+}
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com] => {
+    "msg": "23dad32fee064e58ad20e21c63922929\n"
+}
+
+PLAY RECAP *********************************************************************
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com : ok=11   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com : ok=11   changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Second run (should be mostly ok, not changed) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+
+PLAY [Setup Jenkins] ***********************************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : include_tasks] *************************************************
+included: /root/twn/devops-bootcamp-update/15-ansible/02-projects/05-setup-jenkins-container/roles/jenkins/tasks/Debian.yaml for ec2-63-177-231-138.eu-central-1.compute.amazonaws.com
+included: /root/twn/devops-bootcamp-update/15-ansible/02-projects/05-setup-jenkins-container/roles/jenkins/tasks/RedHat.yaml for ec2-3-73-126-108.eu-central-1.compute.amazonaws.com
+
+TASK [jenkins : Install Docker in ubuntu] **************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Install Docker in amazon] **************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : run docker] ****************************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Get docker GID] ************************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Copy Dockerfile to server] *************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Build custom Jenkins Image] ************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : Run jenkins container] *****************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : wait for pwd] **************************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : get pwd] *******************************************************
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com]
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com]
+
+TASK [jenkins : ansible.builtin.debug] *****************************************
+ok: [ec2-63-177-231-138.eu-central-1.compute.amazonaws.com] => {
+    "msg": "e8dc3cfc1d0145999d8a98bcce98aa4d\n"
+}
+ok: [ec2-3-73-126-108.eu-central-1.compute.amazonaws.com] => {
+    "msg": "23dad32fee064e58ad20e21c63922929\n"
+}
+
+PLAY RECAP *********************************************************************
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Jenkins responds on 8080 (max 2 min) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.9"},"cache_control": "no-cache,no-store,must-revalidate","changed": false,"connection": "close","content_security_policy_report_only": "base-uri 'none'; default-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; script-src 'report-sample' 'self' usage.jenkins.io; style-src 'report-sample' 'self' 'unsafe-inline'; report-to content-security-policy; report-uri http://localhost:8080/content-security-policy-reporting-endpoint/hxi2w6za1BoeqUcq5F4gwqI9IRuGeaWcAXvwt6vGxS0=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","content_type": "text/html;charset=utf-8","cookies": {"JSESSIONID.78dea46a": "node01ps8xg9r6ynqg1oogjy4sl92u30.node0"},"cookies_string": "JSESSIONID.78dea46a=node01ps8xg9r6ynqg1oogjy4sl92u30.node0","cross_origin_opener_policy": "same-origin","date": "Tue, 20 Oct 2026 15:44:11 GMT","elapsed": 1,"expires": "0","msg": "OK (unknown bytes)","redirected": false,"referrer_policy": "same-origin","reporting_endpoints": "content-security-policy: http://localhost:8080/content-security-policy-reporting-endpoint/hxi2w6za1BoeqUcq5F4gwqI9IRuGeaWcAXvwt6vGxS0=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","server": "Jetty(12.1.13)","set_cookie": "JSESSIONID.78dea46a=node01ps8xg9r6ynqg1oogjy4sl92u30.node0; Path=/; HttpOnly; SameSite=Lax","status": 200,"url": "http://localhost:8080/login","vary": "Accept-Encoding","x_content_type_options": "nosniff","x_frame_options": "sameorigin, sameorigin","x_hudson": "1.395","x_hudson_theme": "default","x_jenkins": "2.580.1","x_jenkins_session": "62064d57"}
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.12"},"cache_control": "no-cache,no-store,must-revalidate","changed": false,"connection": "close","content_security_policy_report_only": "base-uri 'none'; default-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; script-src 'report-sample' 'self' usage.jenkins.io; style-src 'report-sample' 'self' 'unsafe-inline'; report-to content-security-policy; report-uri http://localhost:8080/content-security-policy-reporting-endpoint/PKD9z2pnf622dGF7rvdEEfSdJ0nLgQ_a_pNTfOtksb4=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","content_type": "text/html;charset=utf-8","cookies": {"JSESSIONID.2e50049b": "node01olbwvtac1nqw1g0lfytvymliy0.node0"},"cookies_string": "JSESSIONID.2e50049b=node01olbwvtac1nqw1g0lfytvymliy0.node0","cross_origin_opener_policy": "same-origin","date": "Tue, 20 Oct 2026 15:44:11 GMT","elapsed": 1,"expires": "0","msg": "OK (unknown bytes)","redirected": false,"referrer_policy": "same-origin","reporting_endpoints": "content-security-policy: http://localhost:8080/content-security-policy-reporting-endpoint/PKD9z2pnf622dGF7rvdEEfSdJ0nLgQ_a_pNTfOtksb4=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","server": "Jetty(12.1.13)","set_cookie": "JSESSIONID.2e50049b=node01olbwvtac1nqw1g0lfytvymliy0.node0; Path=/; HttpOnly; SameSite=Lax","status": 200,"url": "http://localhost:8080/login","vary": "Accept-Encoding","x_content_type_options": "nosniff","x_frame_options": "sameorigin, sameorigin","x_hudson": "1.395","x_hudson_theme": "default","x_jenkins": "2.580.1","x_jenkins_session": "2bf5822e"}
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.9"},"cache_control": "no-cache,no-store,must-revalidate","changed": false,"connection": "close","content_security_policy_report_only": "base-uri 'none'; default-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; script-src 'report-sample' 'self' usage.jenkins.io; style-src 'report-sample' 'self' 'unsafe-inline'; report-to content-security-policy; report-uri http://localhost:8080/content-security-policy-reporting-endpoint/hxi2w6za1BoeqUcq5F4gwqI9IRuGeaWcAXvwt6vGxS0=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","content_type": "text/html;charset=utf-8","cookies": {"JSESSIONID.78dea46a": "node0q347herv2uiuwarz199ggp891.node0"},"cookies_string": "JSESSIONID.78dea46a=node0q347herv2uiuwarz199ggp891.node0","cross_origin_opener_policy": "same-origin","date": "Tue, 20 Oct 2026 15:44:18 GMT","elapsed": 0,"expires": "0","msg": "OK (unknown bytes)","redirected": false,"referrer_policy": "same-origin","reporting_endpoints": "content-security-policy: http://localhost:8080/content-security-policy-reporting-endpoint/hxi2w6za1BoeqUcq5F4gwqI9IRuGeaWcAXvwt6vGxS0=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","server": "Jetty(12.1.13)","set_cookie": "JSESSIONID.78dea46a=node0q347herv2uiuwarz199ggp891.node0; Path=/; HttpOnly; SameSite=Lax","status": 200,"url": "http://localhost:8080/login","vary": "Accept-Encoding","x_content_type_options": "nosniff","x_frame_options": "sameorigin, sameorigin","x_hudson": "1.395","x_hudson_theme": "default","x_jenkins": "2.580.1","x_jenkins_session": "62064d57"}
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.12"},"cache_control": "no-cache,no-store,must-revalidate","changed": false,"connection": "close","content_security_policy_report_only": "base-uri 'none'; default-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data:; script-src 'report-sample' 'self' usage.jenkins.io; style-src 'report-sample' 'self' 'unsafe-inline'; report-to content-security-policy; report-uri http://localhost:8080/content-security-policy-reporting-endpoint/PKD9z2pnf622dGF7rvdEEfSdJ0nLgQ_a_pNTfOtksb4=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","content_type": "text/html;charset=utf-8","cookies": {"JSESSIONID.2e50049b": "node018mjqibo0wu3eys2hzdj7oi201.node0"},"cookies_string": "JSESSIONID.2e50049b=node018mjqibo0wu3eys2hzdj7oi201.node0","cross_origin_opener_policy": "same-origin","date": "Tue, 20 Oct 2026 15:44:19 GMT","elapsed": 0,"expires": "0","msg": "OK (unknown bytes)","redirected": false,"referrer_policy": "same-origin","reporting_endpoints": "content-security-policy: http://localhost:8080/content-security-policy-reporting-endpoint/PKD9z2pnf622dGF7rvdEEfSdJ0nLgQ_a_pNTfOtksb4=:YW5vbnltb3Vz:aHVkc29uLm1vZGVsLkh1ZHNvbg==:bG9naW4=","server": "Jetty(12.1.13)","set_cookie": "JSESSIONID.2e50049b=node018mjqibo0wu3eys2hzdj7oi201.node0; Path=/; HttpOnly; SameSite=Lax","status": 200,"url": "http://localhost:8080/login","vary": "Accept-Encoding","x_content_type_options": "nosniff","x_frame_options": "sameorigin, sameorigin","x_hudson": "1.395","x_hudson_theme": "default","x_jenkins": "2.580.1","x_jenkins_session": "2bf5822e"}
+
+===== Tools inside the container (as jenkins user) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+uid=1000(jenkins) gid=1000(jenkins) groups=1000(jenkins),113
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+uid=1000(jenkins) gid=1000(jenkins) groups=1000(jenkins),993
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+CONTAINER ID   IMAGE            COMMAND                  CREATED              STATUS              PORTS                                              NAMES
+6655841cf785   custom-jenkins   "/usr/bin/tini -- /u…"   About a minute ago   Up About a minute   0.0.0.0:8080->8080/tcp, 0.0.0.0:50000->50000/tcp   jenkins
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+CONTAINER ID   IMAGE            COMMAND                  CREATED              STATUS              PORTS                                              NAMES
+792c234c3fa9   custom-jenkins   "/usr/bin/tini -- /u…"   About a minute ago   Up About a minute   0.0.0.0:8080->8080/tcp, 0.0.0.0:50000->50000/tcp   jenkins
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+v20.19.2
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+v20.19.2
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-73-126-108.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Host 'ec2-63-177-231-138.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-73-126-108.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+9.2.0
+ec2-63-177-231-138.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+9.2.0
+
+===== ALL TESTS PASSED =====

@@ -18,9 +18,12 @@
     dest: /opt/jenkins/
 
 - name: Build custom Jenkins Image
-  community.docker.docker_image_build:
+  community.docker.docker_image:
     name: custom-jenkins
-    path: /opt/jenkins
+    source: build
+    build:
+      path: /opt/jenkins
+    force_source: true
 
 - name: Run jenkins container
   community.docker.docker_container:

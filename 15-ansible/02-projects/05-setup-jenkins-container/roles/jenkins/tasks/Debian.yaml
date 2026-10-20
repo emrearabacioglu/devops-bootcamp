@@ -5,4 +5,4 @@
     name:
       - docker.io
       - python3-requests
-      - buildx
+
