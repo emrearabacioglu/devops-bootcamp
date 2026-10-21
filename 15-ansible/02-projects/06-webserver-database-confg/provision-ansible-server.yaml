@@ -21,7 +21,7 @@
         force: false
         tags:
           Environment: ansible-lab
-          
+
     - name: configure sg
       amazon.aws.ec2_security_group:
         name: ansible sg
@@ -62,4 +62,5 @@
         tags:
           Environment: ansible-lab
           Role: ansible-server
+          OS: amazon
           

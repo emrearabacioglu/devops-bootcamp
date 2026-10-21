@@ -4,7 +4,7 @@ regions:
   - eu-central-1
 
 filters:
-  tag:Name: jenkins
+  tag:Environment: ansible-lab
   instance-state-name: running
 
 keyed_groups:
@@ -12,5 +12,6 @@ keyed_groups:
     prefix: tag
 
 compose:
-  ansible_user: "'ec2-user' if ec2_tags.Role == 'ansible' else 'ubuntu'"
+  ansible_user: "'ec2-user' if ec2_tags.OS == 'amazon' else 'ubuntu'"
+
 

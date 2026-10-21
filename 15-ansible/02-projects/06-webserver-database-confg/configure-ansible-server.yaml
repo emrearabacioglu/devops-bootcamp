@@ -10,12 +10,12 @@
           - python3-pip
 
     - name: install ansible and libs
-      extra_args: --user
       ansible.builtin.pip:
         name: 
           - ansible
           - boto3
           - botocore
+        extra_args: --user
 
     - name: copy private key
       ansible.builtin.copy:

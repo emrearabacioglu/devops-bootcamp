@@ -110,21 +110,13 @@
         tags:
           Environment: ansible-lab
 
-    - name: Set up key pair
-      amazon.aws.ec2_key:
-        name: ansible-key
-        region: "{{ aws_region }}"
-        key_material: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
-        force: false
-        tags:
-          Environment: ansible-lab
-
     - name: Launch webserver EC2 Instance
       amazon.aws.ec2_instance:
         name: web-server
         key_name: ansible-key
         instance_type: t3.small
         security_group: web-sg
+        vpc_subnet_id: "{{ public_subnet_id }}"
         region: "{{ aws_region }}"
         image_id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id', region=aws_region) }}"
         filters: 
@@ -142,6 +134,7 @@
         key_name: ansible-key
         instance_type: t3.small
         security_group: db-sg
+        vpc_subnet_id: "{{ private_subnet_id }}"
         region: "{{ aws_region }}"
         image_id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id', region=aws_region) }}"
         filters: 
