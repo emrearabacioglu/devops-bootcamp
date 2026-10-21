@@ -1,4 +1,4 @@
-# EXERCISE 2: Working with IAM in AWS
+# Show IAM users and their last activity
 # Get all the IAM users in your AWS account
 # For each user, print out the name of the user and when they were last active
 # Print out the user ID and name of the user who was active the most recently

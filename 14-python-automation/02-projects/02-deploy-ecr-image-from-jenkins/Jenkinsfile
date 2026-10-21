@@ -16,7 +16,7 @@ pipeline {
             steps {
                 script {
                     env.IMAGE_TAGS = sh(
-                        script: 'python3 14-python-automation/02-projects/exc5-1-fetch_images.py',
+                        script: 'python3 14-python-automation/02-projects/02-deploy-ecr-image-from-jenkins/fetch_images.py',
                         returnStdout: true).trim()
                     echo "Available tags:\n${env.IMAGE_TAGS}"
                 }
@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo 'ssh to server and deploy'
                 withCredentials([sshUserPrivateKey(credentialsId:'ec2-python-key',keyFileVariable:'SSH_KEY_FILE',usernameVariable:'SSH_USER')]){
-                    sh 'python3 14-python-automation/02-projects/exc5-2-deploy.py'
+                    sh 'python3 14-python-automation/02-projects/02-deploy-ecr-image-from-jenkins/deploy.py'
                 }
             }
         }
@@ -46,7 +46,7 @@ pipeline {
             steps {
                 script {
                     echo 'checking app status..'
-                    sh 'python3 14-python-automation/02-projects/exc5-3-validate.py'
+                    sh 'python3 14-python-automation/02-projects/02-deploy-ecr-image-from-jenkins/validate.py'
                 }
             }
         }

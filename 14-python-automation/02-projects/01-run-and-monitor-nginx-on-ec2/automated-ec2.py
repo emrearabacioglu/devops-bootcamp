@@ -1,5 +1,5 @@
 """
-EXERCISE 3: Automate Running and Monitoring Application on EC2 instance
+Run and monitor an nginx container on an EC2 instance
 
 - Start EC2 instance in default VPC (reuse it if it already exists)
 - Wait until the EC2 server is fully initialized

@@ -2,14 +2,14 @@
 
 **Technologies:** Ansible (roles, `aws_ec2` dynamic inventory, `community.docker`), Docker, Jenkins, Node.js, npm, AWS (EC2, Security Groups, Key Pairs, SSM Parameter Store), Amazon Linux 2023, Ubuntu 24.04
 
-Same goal as [`04-setup-with-distro-input`](../04-setup-with-distro-input): one command creates an EC2 server, another installs Jenkins with Node.js, npm and Docker available for builds. The difference is that Jenkins now runs as a Docker container instead of a system service. Provisioning, the dynamic inventory and destroy are unchanged. Only the `jenkins` role is new.
+Ansible code that creates an EC2 server (Amazon Linux 2023 or Ubuntu 24.04) and runs Jenkins on it as a Docker container, with Node.js, npm and Docker available for Jenkins builds. The distro is chosen with `-e os=amazon` or `-e os=ubuntu`. One playbook creates the server, another installs Docker and starts Jenkins, a third deletes everything.
 
 The host only gets Docker. Everything Jenkins needs for builds (docker CLI, Node.js, npm) is baked into a custom image built from `jenkins/jenkins:lts`, so the inside of the container is the same on both distros.
 
 ## How it works
 
 ```
-provision.yaml -e os=ubuntu        EC2 + security group + key pair (same as 04)
+provision.yaml -e os=ubuntu        EC2 + security group + key pair, tags Name, OS, Role=jenkins
                   │
                   ▼
 inventory_aws_ec2.yaml             groups tag_OS_amazon / tag_OS_ubuntu, SSH user from the OS tag
@@ -31,12 +31,12 @@ setup-jenkins.yaml [-e os=...]     role jenkins on one OS group or on all Jenkin
 
 | File                                                                                                           | What it does                                                                                                                                 |
 | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `provision.yaml`, `destroy-instance.yaml`, `os_config.yaml`, `inventory_aws_ec2.yaml`, `ansible.cfg` | Same as in 04: create/delete the server, find it by tags, set the SSH user per OS.                                                           |
-| `setup-jenkins.yaml`                                                                                         | Runs the`jenkins` role on `tag_OS_<os>`, or on every Jenkins server when `os` is not given.                                            |
-| `roles/jenkins/tasks/RedHat.yaml`                                                                            | Amazon Linux: installs`docker` and `python3-requests` with dnf.                                                                          |
-| `roles/jenkins/tasks/Debian.yaml`                                                                            | Ubuntu: installs`docker.io` and `python3-requests` with apt.                                                                             |
+| `provision.yaml`, `destroy-instance.yaml`, `os_config.yaml`, `inventory_aws_ec2.yaml`, `ansible.cfg` | Create and delete the server, its security group and the key pair. The per-OS values (AMI, names) are in `os_config.yaml`. The dynamic inventory finds the servers by tags and sets the SSH user per OS. |
+| `setup-jenkins.yaml`                                                                                         | Runs the `jenkins` role on `tag_OS_<os>`, or on every Jenkins server when `os` is not given.                                            |
+| `roles/jenkins/tasks/RedHat.yaml`                                                                            | Amazon Linux: installs `docker` and `python3-requests` with dnf.                                                                          |
+| `roles/jenkins/tasks/Debian.yaml`                                                                            | Ubuntu: installs `docker.io` and `python3-requests` with apt.                                                                             |
 | `roles/jenkins/tasks/main.yml`                                                                               | Includes the OS file, then everything else: Docker service, docker GID, image build, container, password.                                    |
-| `roles/jenkins/files/Dockerfile`                                                                             | Custom image:`jenkins/jenkins:lts` plus `nodejs`, `npm` and `docker.io` (only its CLI is used), back to `USER jenkins` at the end. |
+| `roles/jenkins/files/Dockerfile`                                                                             | Custom image: `jenkins/jenkins:lts` plus `nodejs`, `npm` and `docker.io` (only its CLI is used), back to `USER jenkins` at the end. |
 | `test-all.sh`, `test.log`                                                                                  | Full test run on both distros and its output.                                                                                                |
 
 ### Decisions
@@ -47,6 +47,8 @@ setup-jenkins.yaml [-e os=...]     role jenkins on one OS group or on all Jenkin
 - **Named volume for Jenkins data.** Jobs, plugins and settings live in the `jenkins_home` volume and survive a recreated container. The volume sits on the host at `/var/lib/docker/volumes/jenkins_home/_data`, so the initial admin password is read from there with `wait_for` + `slurp`.
 - **Rebuild on Dockerfile changes.** `force_source: true` builds every run. With an unchanged Dockerfile the build cache gives the same image ID and the container is left alone. With a changed Dockerfile the image ID changes and `docker_container` recreates the container from the new image. The data stays in the volume.
 - **`restart_policy: unless-stopped`.** The container comes back after a reboot.
+- **No duplicate servers on re-run.** `ec2_instance` uses `exact_count: 1` with explicit `filters` on the `Name` and `OS` tags and the instance state. The AMI ID is read at runtime from AWS's public SSM parameters, so it is never hardcoded.
+- **Destroy is written by hand.** Ansible keeps no state, so `destroy-instance.yaml` deletes what `provision.yaml` created, in reverse order: instance, security group, key pair.
 
 ## Requirements
 

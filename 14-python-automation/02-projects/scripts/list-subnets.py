@@ -1,4 +1,4 @@
-# EXERCISE 1: Working with Subnets in AWS
+# List the subnets in the default region
 # Get all the subnets in your default region
 # Print the subnet Ids
 

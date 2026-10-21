@@ -1,5 +1,5 @@
 """
-EXERCISE 4: Working with ECR in AWS
+List ECR repositories and image tags
 
 - Get all the repositories in ECR
 - Print the name of each repository
