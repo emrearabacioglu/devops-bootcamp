@@ -1,0 +1,71 @@
+---
+- name: Destroy  resources
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: get nat gateway info
+      amazon.aws.ec2_vpc_nat_gateway_info:
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Role" : "db-nat"
+          state: ["pending", "available"]
+      register: db_nat_info
+    
+    - name: get vpc info
+      amazon.aws.ec2_vpc_net_info:
+        region: "{{ aws_region }}"
+        filters:
+          "is-default": "true"
+      register: vpc_info
+    
+    - name: set vars
+      ansible.builtin.set.fact:
+        vpc_id: "{{vpc_info.vpcs[0].id}}"
+
+    - name: Terminate ec2 instances
+      amazon.aws.ec2_instance:
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Role": ["db-server", "web-server"]
+          instance-state-name: ["pending", "running", "stopping", "stopped"]
+        state: absent
+
+    - name: Terminate NAT gateway
+      amazon.aws.ec2_vpc_nat_gateway:
+        region: "{{ aws_region }}"
+        nat_gateway_id: "{{ item.nat_gateway_id }}"
+        release_eip: true
+        wait: true
+        state: absent
+      loop: "{{ db_nat_info.result }}"
+
+    - name: Terminate route table
+      amazon.aws.ec2_vpc_route_table:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        filters:
+          "tag:Role": "nat-route"
+        state: absent
+
+    - name: Terminate private subnet
+      amazon.aws.ec2_vpc_subnet:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        cidr: "{{ private_subnet_cidr }}"
+        filters: 
+          "tag:Role": "db-subnet"
+        state: absent
+
+    - name: Terminate db security group
+      amazon.aws.ec2_security_group:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        name: db-sg
+        state: absent
+
+    - name: Terminate webserver security group
+      amazon.aws.ec2_security_group:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc_id }}"
+        name: web-sg
+        state: absent

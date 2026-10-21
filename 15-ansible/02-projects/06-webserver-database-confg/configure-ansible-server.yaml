@@ -25,9 +25,8 @@
     
     - name: copy playbooks and jar file
       ansible.builtin.copy:
-        src: '/control-node/'
+        src: 'control-node/'
         dest: '/home/ec2-user/control-node/'
-        mode: "0600"
 
     - name: install mysql roles
       environment:

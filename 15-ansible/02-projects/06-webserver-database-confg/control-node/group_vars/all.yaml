@@ -1,3 +1,4 @@
 aws_region: eu-central-1
 jar_name: build-tools-exercises-1.0-SNAPSHOT.jar
 app_user: javauser
+private_subnet_cidr: 172.31.48.0/20
