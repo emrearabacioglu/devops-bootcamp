@@ -23,6 +23,12 @@
         dest: '/home/ec2-user/.ssh/id_rsa'
         mode: "0600"
     
+    - name: copy playbooks and jar file
+      ansible.builtin.copy:
+        src: '/control-node/'
+        dest: '/home/ec2-user/control-node/'
+        mode: "0600"
+
     - name: install mysql roles
       environment:
         PATH: "/home/ec2-user/.local/bin:{{ ansible_env.PATH }}"

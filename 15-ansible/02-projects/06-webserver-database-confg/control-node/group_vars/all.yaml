@@ -1,1 +1,3 @@
 aws_region: eu-central-1
+jar_name: build-tools-exercises-1.0-SNAPSHOT.jar
+app_user: javauser
