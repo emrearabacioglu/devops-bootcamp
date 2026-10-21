@@ -1,0 +1,18 @@
+---
+plugin : aws_ec2
+regions:
+  - eu-central-1
+
+filters:
+  tag:Environment: ansible-lab
+  instance-state-name: running
+
+keyed_groups:
+  - key: ec2_tags
+    prefix: tag
+
+compose:
+  ansible_user: "'ec2-user' if ec2_tags.OS == 'amazon' else 'ubuntu'"
+  ansible_host: private_ip_address
+
+
