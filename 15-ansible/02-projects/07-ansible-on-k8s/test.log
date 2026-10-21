@@ -1,0 +1,343 @@
+
+===== Syntax check =====
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+playbook: build-image-push-to-ecr.yaml
+
+playbook: deploy-to-cluster.yaml
+
+playbook: migrate-mysql-to-helm.yaml
+
+playbook: destroy.yaml
+
+===== Terraform: VPC + EKS (about 15 min) =====
+[0m[1mInitializing the backend...[0m
+
+[0m[1mInitializing modules...[0m
+
+[0m[1mInitializing provider plugins...[0m
+- Reusing previous version of hashicorp/cloudinit from the dependency lock file
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Reusing previous version of hashicorp/tls from the dependency lock file
+- Reusing previous version of hashicorp/time from the dependency lock file
+- Reusing previous version of hashicorp/null from the dependency lock file
+- Using previously-installed hashicorp/time v0.14.2
+- Using previously-installed hashicorp/null v3.3.2
+- Using previously-installed hashicorp/cloudinit v2.4.1
+- Using previously-installed hashicorp/aws v6.69.0
+- Using previously-installed hashicorp/tls v4.4.1
+
+[0m[1m[32mTerraform has been successfully initialized![0m[32m[0m
+[0m[32m
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_region.current[0]: Reading...[0m[0m
+[0m[1mmodule.eks.module.kms.data.aws_partition.current[0]: Reading...[0m[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.assume[0]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_iam_policy_document.assume_role_policy[0]: Reading...[0m[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_partition.current[0]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_caller_identity.current[0]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_partition.current[0]: Reading...[0m[0m
+[0m[1mdata.aws_availability_zones.azs: Reading...[0m[0m
+[0m[1mmodule.eks.aws_cloudwatch_log_group.this[0]: Refreshing state... [id=/aws/eks/dev-myapp-eks-cluster/cluster][0m
+[0m[1mmodule.myapp-vpc.aws_vpc.this[0]: Refreshing state... [id=vpc-02c54c2ef46a2ac9d][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_partition.current[0]: Read complete after 0s [id=aws][0m
+[0m[1mmodule.eks.data.aws_iam_policy_document.assume_role_policy[0]: Read complete after 0s [id=2830595799][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_region.current[0]: Read complete after 0s [id=eu-central-1][0m
+[0m[1mmodule.eks.data.aws_partition.current[0]: Read complete after 0s [id=aws][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.assume[0]: Read complete after 0s [id=819195744][0m
+[0m[1mmodule.eks.module.kms.data.aws_partition.current[0]: Read complete after 0s [id=aws][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.base[0]: Reading...[0m[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_caller_identity.current[0]: Reading...[0m[0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].data.aws_iam_policy_document.assume_role_policy[0]: Reading...[0m[0m
+[0m[1mmodule.eks.module.kms.data.aws_caller_identity.current[0]: Reading...[0m[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.base[0]: Read complete after 0s [id=1132004489][0m
+[0m[1mmodule.eks.aws_iam_role.this[0]: Refreshing state... [id=dev-myapp-eks-cluster-cluster-79b591acb8c7c2b387610d5f75][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].data.aws_iam_policy_document.assume_role_policy[0]: Read complete after 0s [id=2560088296][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.aws_iam_role.this[0]: Refreshing state... [id=dev-myapp-eks-cluster-ebs-csi-7fac1e4cd600542b32b4180d6e][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_iam_role.this[0]: Refreshing state... [id=main-eks-node-group-f85deeea4333b9b13668ffa4ee][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.ebs_csi[0]: Reading...[0m[0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_iam_policy_document.ebs_csi[0]: Read complete after 0s [id=3979039874][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.aws_iam_policy.ebs_csi[0]: Refreshing state... [id=arn:aws:iam::731872836472:policy/AmazonEKS_EBS_CSI-1adb8c8f5bebd1b48199cd11ce][0m
+[0m[1mmodule.eks.data.aws_caller_identity.current[0]: Read complete after 1s [id=731872836472][0m
+[0m[1mmodule.eks.data.aws_iam_session_context.current[0]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_iam_session_context.current[0]: Read complete after 0s [id=arn:aws:iam::731872836472:user/admin][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.data.aws_caller_identity.current[0]: Read complete after 1s [id=731872836472][0m
+[0m[1mmodule.eks.module.kms.data.aws_caller_identity.current[0]: Read complete after 1s [id=731872836472][0m
+[0m[1mdata.aws_availability_zones.azs: Read complete after 1s [id=eu-central-1][0m
+[0m[1mmodule.aws_ebs_csi_pod_identity.aws_iam_role_policy_attachment.ebs_csi[0]: Refreshing state... [id=dev-myapp-eks-cluster-ebs-csi-7fac1e4cd600542b32b4180d6e/arn:aws:iam::731872836472:policy/AmazonEKS_EBS_CSI-1adb8c8f5bebd1b48199cd11ce][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_iam_role_policy_attachment.this["AmazonEC2ContainerRegistryReadOnly"]: Refreshing state... [id=main-eks-node-group-f85deeea4333b9b13668ffa4ee/arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_iam_role_policy_attachment.this["AmazonEKS_CNI_Policy"]: Refreshing state... [id=main-eks-node-group-f85deeea4333b9b13668ffa4ee/arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_iam_role_policy_attachment.this["AmazonEKSWorkerNodePolicy"]: Refreshing state... [id=main-eks-node-group-f85deeea4333b9b13668ffa4ee/arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy][0m
+[0m[1mmodule.myapp-vpc.aws_default_route_table.default[0]: Refreshing state... [id=rtb-00f5a04df97e69847][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.public[0]: Refreshing state... [id=subnet-0d6700398ff22c6a0][0m
+[0m[1mmodule.myapp-vpc.aws_default_security_group.this[0]: Refreshing state... [id=sg-04b9a7d38da9fe45e][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.public[2]: Refreshing state... [id=subnet-0f716f3d75adbedcc][0m
+[0m[1mmodule.myapp-vpc.aws_default_network_acl.this[0]: Refreshing state... [id=acl-0c166e41fe7da9f98][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.public[1]: Refreshing state... [id=subnet-05df35ae7e3bb37ab][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.private[2]: Refreshing state... [id=subnet-04cb219c2e097cbeb][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.private[0]: Refreshing state... [id=subnet-0a12b5e6a402b0281][0m
+[0m[1mmodule.myapp-vpc.aws_subnet.private[1]: Refreshing state... [id=subnet-06a233f4d51c632c3][0m
+[0m[1mmodule.myapp-vpc.aws_internet_gateway.this[0]: Refreshing state... [id=igw-0f5f6354638ae079a][0m
+[0m[1mmodule.myapp-vpc.aws_route_table.public[0]: Refreshing state... [id=rtb-00e1511a395fef952][0m
+[0m[1mmodule.myapp-vpc.aws_route_table.private[0]: Refreshing state... [id=rtb-0daa9f08cb63d37c1][0m
+[0m[1mmodule.eks.aws_iam_role_policy_attachment.this["AmazonEKSClusterPolicy"]: Refreshing state... [id=dev-myapp-eks-cluster-cluster-79b591acb8c7c2b387610d5f75/arn:aws:iam::aws:policy/AmazonEKSClusterPolicy][0m
+[0m[1mmodule.eks.aws_security_group.node[0]: Refreshing state... [id=sg-07c555108ca44a33a][0m
+[0m[1mmodule.eks.aws_security_group.cluster[0]: Refreshing state... [id=sg-047d85da0c0cbd148][0m
+[0m[1mmodule.eks.module.kms.data.aws_iam_policy_document.this[0]: Reading...[0m[0m
+[0m[1mmodule.eks.module.kms.data.aws_iam_policy_document.this[0]: Read complete after 0s [id=3005587439][0m
+[0m[1mmodule.eks.module.kms.aws_kms_key.this[0]: Refreshing state... [id=1fdf9867-160c-459c-b654-8428d4dc2d5f][0m
+[0m[1mmodule.myapp-vpc.aws_eip.nat[0]: Refreshing state... [id=eipalloc-05ceeaed9649849d4][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.public[2]: Refreshing state... [id=rtbassoc-06dc45dd7c42ef418][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-0606d4d49962d00bf][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-061ea6bdd2d231ffa][0m
+[0m[1mmodule.myapp-vpc.aws_route.public_internet_gateway[0]: Refreshing state... [id=r-rtb-00e1511a395fef9521080289494][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.private[0]: Refreshing state... [id=rtbassoc-083cc59ee708fbcee][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.private[2]: Refreshing state... [id=rtbassoc-0f14615a51be93bc3][0m
+[0m[1mmodule.myapp-vpc.aws_route_table_association.private[1]: Refreshing state... [id=rtbassoc-029ba3a2f07966a6b][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_443"]: Refreshing state... [id=sgrule-3336730958][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_9443_webhook"]: Refreshing state... [id=sgrule-2825325294][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_6443_webhook"]: Refreshing state... [id=sgrule-3751412996][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_nodes_ephemeral"]: Refreshing state... [id=sgrule-2341888487][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["egress_all"]: Refreshing state... [id=sgrule-1311901691][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_10251_webhook"]: Refreshing state... [id=sgrule-1042249378][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_4443_webhook"]: Refreshing state... [id=sgrule-383279762][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_self_coredns_udp"]: Refreshing state... [id=sgrule-493910079][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_self_coredns_tcp"]: Refreshing state... [id=sgrule-3106921424][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_8443_webhook"]: Refreshing state... [id=sgrule-3435542821][0m
+[0m[1mmodule.eks.aws_security_group_rule.node["ingress_cluster_kubelet"]: Refreshing state... [id=sgrule-173418201][0m
+[0m[1mmodule.eks.aws_security_group_rule.cluster["ingress_nodes_443"]: Refreshing state... [id=sgrule-2633663969][0m
+[0m[1mmodule.myapp-vpc.aws_nat_gateway.this[0]: Refreshing state... [id=nat-06f10b3ecc65954f8][0m
+[0m[1mmodule.eks.module.kms.aws_kms_alias.this["cluster"]: Refreshing state... [id=alias/eks/dev-myapp-eks-cluster][0m
+[0m[1mmodule.eks.aws_iam_policy.cluster_encryption[0]: Refreshing state... [id=arn:aws:iam::731872836472:policy/dev-myapp-eks-cluster-cluster-ClusterEncryption3e7967c0967f9e8c3004cedcce][0m
+[0m[1mmodule.myapp-vpc.aws_route.private_nat_gateway[0]: Refreshing state... [id=r-rtb-0daa9f08cb63d37c11080289494][0m
+[0m[1mmodule.eks.aws_eks_cluster.this[0]: Refreshing state... [id=dev-myapp-eks-cluster][0m
+[0m[1mmodule.eks.aws_iam_role_policy_attachment.cluster_encryption[0]: Refreshing state... [id=dev-myapp-eks-cluster-cluster-79b591acb8c7c2b387610d5f75/arn:aws:iam::731872836472:policy/dev-myapp-eks-cluster-cluster-ClusterEncryption3e7967c0967f9e8c3004cedcce][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["aws-ebs-csi-driver"]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["eks-pod-identity-agent"]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["kube-proxy"]: Reading...[0m[0m
+[0m[1mmodule.eks.aws_eks_access_entry.this["cluster_creator"]: Refreshing state... [id=dev-myapp-eks-cluster:arn:aws:iam::731872836472:user/admin][0m
+[0m[1mmodule.eks.data.tls_certificate.this[0]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["vpc-cni"]: Reading...[0m[0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["coredns"]: Reading...[0m[0m
+[0m[1mmodule.eks.time_sleep.this[0]: Refreshing state... [id=2026-10-21T15:21:30Z][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].module.user_data.null_resource.validate_cluster_service_cidr: Refreshing state... [id=2332914815101273627][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].data.aws_ssm_parameter.ami[0]: Reading...[0m[0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_launch_template.this[0]: Refreshing state... [id=lt-0f64169e1e5ec3ff1][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["aws-ebs-csi-driver"]: Read complete after 1s [id=aws-ebs-csi-driver][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["coredns"]: Read complete after 1s [id=coredns][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["eks-pod-identity-agent"]: Read complete after 1s [id=eks-pod-identity-agent][0m
+[0m[1mmodule.eks.data.tls_certificate.this[0]: Read complete after 1s [id=38b12f081caa262d3c3b1b0f23fda4734317a14d][0m
+[0m[1mmodule.eks.aws_iam_openid_connect_provider.oidc_provider[0]: Refreshing state... [id=arn:aws:iam::731872836472:oidc-provider/oidc.eks.eu-central-1.amazonaws.com/id/2201C4119FBFB393242049E76FCB888E][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["kube-proxy"]: Read complete after 1s [id=kube-proxy][0m
+[0m[1mmodule.eks.data.aws_eks_addon_version.this["vpc-cni"]: Read complete after 1s [id=vpc-cni][0m
+[0m[1mmodule.eks.aws_eks_addon.before_compute["vpc-cni"]: Refreshing state... [id=dev-myapp-eks-cluster:vpc-cni][0m
+[0m[1mmodule.eks.aws_eks_addon.before_compute["eks-pod-identity-agent"]: Refreshing state... [id=dev-myapp-eks-cluster:eks-pod-identity-agent][0m
+[0m[1mmodule.eks.aws_eks_access_policy_association.this["cluster_creator_admin"]: Refreshing state... [id=dev-myapp-eks-cluster#arn:aws:iam::731872836472:user/admin#arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].data.aws_ssm_parameter.ami[0]: Read complete after 1s [id=/aws/service/eks/optimized-ami/1.35/amazon-linux-2023/x86_64/standard/recommended/release_version][0m
+[0m[1mmodule.eks.module.eks_managed_node_group["main"].aws_eks_node_group.this[0]: Refreshing state... [id=dev-myapp-eks-cluster:main-0943e2080d8742ed8048374d5c][0m
+[0m[1mmodule.eks.aws_eks_addon.this["coredns"]: Refreshing state... [id=dev-myapp-eks-cluster:coredns][0m
+[0m[1mmodule.eks.aws_eks_addon.this["aws-ebs-csi-driver"]: Refreshing state... [id=dev-myapp-eks-cluster:aws-ebs-csi-driver][0m
+[0m[1mmodule.eks.aws_eks_addon.this["kube-proxy"]: Refreshing state... [id=dev-myapp-eks-cluster:kube-proxy][0m
+
+[0m[1m[32mNo changes.[0m[1m Your infrastructure matches the configuration.[0m
+
+[0mTerraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+[0m[1m[32m
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.[0m
+[0m[1m[32m
+Outputs:
+
+[0mcluster_endpoint = "https://2201C4119FBFB393242049E76FCB888E.gr7.eu-central-1.eks.amazonaws.com"
+cluster_name = "dev-myapp-eks-cluster"
+
+===== Build and push image to ECR =====
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Build the image from local Dockerfile and push to ECR] *******************
+
+TASK [Build Jar] ***************************************************************
+changed: [localhost]
+
+TASK [get aws info] ************************************************************
+ok: [localhost]
+
+TASK [create ecr erpo] *********************************************************
+ok: [localhost]
+
+TASK [login ECR] ***************************************************************
+changed: [localhost]
+
+TASK [Build Docker Image] ******************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=5    changed=3    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Deploy: ingress-nginx, single MySQL, Java app =====
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Deploy java/mysql to cluster] ********************************************
+
+TASK [Get cluster name from terraform] *****************************************
+ok: [localhost]
+
+TASK [update kubeconfig] *******************************************************
+changed: [localhost]
+
+TASK [deploy nginx] ************************************************************
+[WARNING]: The default idempotency check can fail to report changes in certain cases. Install helm diff >= 3.4.1 for better results.
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'status.values' return value is deprecated and will be removed in version 8.0.0. Use 'status.release_values' instead. This feature will be removed from collection 'kubernetes.core' version 8.0.0.
+ok: [localhost]
+
+TASK [Create secret] ***********************************************************
+changed: [localhost]
+
+TASK [Create configmap] ********************************************************
+changed: [localhost]
+
+TASK [Deploy mysql] ************************************************************
+changed: [localhost]
+
+TASK [Deploy java app] *********************************************************
+changed: [localhost]
+
+TASK [Deploy ingress] **********************************************************
+changed: [localhost]
+
+TASK [Get loadbalancer address] ************************************************
+FAILED - RETRYING: [localhost]: Get loadbalancer address (19 retries left).
+ok: [localhost]
+
+TASK [ansible.builtin.debug] ***************************************************
+ok: [localhost] => {
+    "msg": "http://a360a04942d64432bad7c22fafe6e1fb-2030133859.eu-central-1.elb.amazonaws.com"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=10   changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+NAME                                   READY   STATUS    RESTARTS   AGE   IP           NODE                                          NOMINATED NODE   READINESS GATES
+java-app-deployment-7687cf8dc8-krqtd   1/1     Running   0          39s   10.0.1.157   ip-10-0-1-74.eu-central-1.compute.internal    <none>           <none>
+java-app-deployment-7687cf8dc8-lpk4d   1/1     Running   0          39s   10.0.2.219   ip-10-0-2-252.eu-central-1.compute.internal   <none>           <none>
+java-app-deployment-7687cf8dc8-ql4wh   1/1     Running   0          39s   10.0.3.40    ip-10-0-3-163.eu-central-1.compute.internal   <none>           <none>
+mysql-deployment-7c46fddbff-n8jwh      1/1     Running   0          57s   10.0.3.167   ip-10-0-3-163.eu-central-1.compute.internal   <none>           <none>
+app: http://a360a04942d64432bad7c22fafe6e1fb-2030133859.eu-central-1.elb.amazonaws.com
+HTTP 200
+
+===== Migrate: MySQL chart (1 primary + 2 secondaries) =====
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Migrate mysql to helmchart] **********************************************
+
+TASK [Get cluster name from terraform] *****************************************
+ok: [localhost]
+
+TASK [update kubeconfig] *******************************************************
+changed: [localhost]
+
+TASK [Update secret] ***********************************************************
+ok: [localhost]
+
+TASK [deploy mysql chart] ******************************************************
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'wait_timeout' parameter is deprecated and will be removed in version 7.0.0. Use 'timeout' instead. This feature will be removed from collection 'kubernetes.core' version 7.0.0.
+[DEPRECATION WARNING]: The 'status.values' return value is deprecated and will be removed in version 8.0.0. Use 'status.release_values' instead. This feature will be removed from collection 'kubernetes.core' version 8.0.0.
+changed: [localhost]
+
+TASK [Update configmap] ********************************************************
+changed: [localhost]
+
+TASK [Restart java app to pick up new config] **********************************
+changed: [localhost]
+
+TASK [Wait until new java pods are ready] **************************************
+changed: [localhost]
+
+TASK [destroy old Mysql] *******************************************************
+changed: [localhost]
+
+TASK [Get loadbalancer address] ************************************************
+ok: [localhost]
+
+TASK [ansible.builtin.debug] ***************************************************
+ok: [localhost] => {
+    "msg": "http://a360a04942d64432bad7c22fafe6e1fb-2030133859.eu-central-1.elb.amazonaws.com"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=10   changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+pod/mysql-primary-0 condition met
+pod/mysql-secondary-0 condition met
+pod/mysql-secondary-1 condition met
+NAME                                       READY   STATUS    RESTARTS   AGE    IP           NODE                                          NOMINATED NODE   READINESS GATES
+pod/java-app-deployment-585759f7df-8prql   1/1     Running   0          14s    10.0.3.226   ip-10-0-3-163.eu-central-1.compute.internal   <none>           <none>
+pod/java-app-deployment-585759f7df-jkvqk   1/1     Running   0          14s    10.0.1.163   ip-10-0-1-74.eu-central-1.compute.internal    <none>           <none>
+pod/java-app-deployment-585759f7df-qj7cf   1/1     Running   0          13s    10.0.2.58    ip-10-0-2-252.eu-central-1.compute.internal   <none>           <none>
+pod/mysql-primary-0                        1/1     Running   0          113s   10.0.2.171   ip-10-0-2-252.eu-central-1.compute.internal   <none>           <none>
+pod/mysql-secondary-0                      1/1     Running   0          113s   10.0.1.5     ip-10-0-1-74.eu-central-1.compute.internal    <none>           <none>
+pod/mysql-secondary-1                      1/1     Running   0          64s    10.0.3.231   ip-10-0-3-163.eu-central-1.compute.internal   <none>           <none>
+
+NAME                                           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS         VOLUMEATTRIBUTESCLASS   AGE    VOLUMEMODE
+persistentvolumeclaim/data-mysql-primary-0     Bound    pvc-d9d8db92-c302-4936-b87f-a079a47c088b   8Gi        RWO            ebs-csi-default-sc   <unset>                 114s   Filesystem
+persistentvolumeclaim/data-mysql-secondary-0   Bound    pvc-7d79757e-6e0f-4c96-a335-e69d97adf3da   8Gi        RWO            ebs-csi-default-sc   <unset>                 114s   Filesystem
+persistentvolumeclaim/data-mysql-secondary-1   Bound    pvc-8f35e12a-f5db-49f1-b286-d3a503721331   8Gi        RWO            ebs-csi-default-sc   <unset>                 65s    Filesystem
+MySQL pods: 3 (expected 3)
+Java app DB_SERVER: mysql-primary (expected mysql-primary)
+old mysql-deployment is gone
+app: http://a360a04942d64432bad7c22fafe6e1fb-2030133859.eu-central-1.elb.amazonaws.com
+HTTP 200
+
+===== APP IS UP: http://a360a04942d64432bad7c22fafe6e1fb-2030133859.eu-central-1.elb.amazonaws.com =====
+Press Enter to destroy now (auto-destroy in 10 min)... 
+===== Destroy =====
+[WARNING]: No inventory was parsed, only implicit localhost is available
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Destroy all resources] ***************************************************
+
+TASK [destroy nginx contoller] *************************************************
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'status.values' return value is deprecated and will be removed in version 8.0.0. Use 'status.release_values' instead. This feature will be removed from collection 'kubernetes.core' version 8.0.0.
+changed: [localhost]
+
+TASK [Destroy mysql release] ***************************************************
+changed: [localhost]
+
+TASK [Destroy PVCs] ************************************************************
+changed: [localhost]
+
+TASK [ansible.builtin.pause] ***************************************************
+Pausing for 90 seconds
+(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)
+ok: [localhost]
+
+TASK [destroy cluster resources by terraform] **********************************
+changed: [localhost]
+
+TASK [destroy ecr erpo] ********************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=6    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Leftover check (should all be 0) =====
+EBS volumes from the cluster: 0
+Classic load balancers:       0
+ALB/NLB load balancers:       0
+
+===== ALL DONE =====

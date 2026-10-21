@@ -12,6 +12,7 @@
 
   - name: Update secret
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/db-secret.yaml"
 
@@ -29,6 +30,7 @@
 
   - name: Update configmap
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/db-config-chart.yaml"
 
@@ -40,6 +42,7 @@
 
   - name: destroy old Mysql
     kubernetes.core.k8s:
+      namespace: default
       state: absent
       src: "{{ playbook_dir }}/k8s/mysql.yaml"
       wait: true

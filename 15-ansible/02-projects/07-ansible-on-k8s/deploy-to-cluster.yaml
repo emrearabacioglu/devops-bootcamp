@@ -21,27 +21,32 @@
 
   - name: Create secret
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/db-secret.yaml"
   - name: Create configmap
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/db-config.yaml"
 
   - name: Deploy mysql
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/mysql.yaml"
       wait: true
 
   - name: Deploy java app
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/java-app.yaml"
       wait: true
 
   - name: Deploy ingress
     kubernetes.core.k8s:
+      namespace: default
       state: present
       src: "{{ playbook_dir }}/k8s/java-app-ingress.yaml"
   
