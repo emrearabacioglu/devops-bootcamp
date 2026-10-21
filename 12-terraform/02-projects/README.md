@@ -1,9 +1,9 @@
-# Module 12 – Terraform exercise: EKS environments with Terraform and two Jenkins pipelines
+# EKS environments with Terraform and two Jenkins pipelines
 
 **Technologies:** Terraform, AWS (VPC, EKS, Fargate, EBS, IAM, S3, ECR), Helm, Helmfile, Kubernetes, Cluster Autoscaler, Jenkins, Docker, Gradle, Java, MySQL
 
-The Module 11 setup (Java app with MySQL on EKS) now comes from Terraform instead of eksctl. One Terraform project creates the VPC, the EKS cluster with a node group and a Fargate profile, the EBS CSI driver, the Cluster Autoscaler and MySQL. The same code creates separate `dev`, `test` and `staging` environments. State is stored in S3. There are two Jenkins pipelines: one for the infrastructure (Terraform) and one for the application (build, push, deploy), the same split as a platform team and an app team working in separate repos.  
-Note: Only `dev` was applied. `test` and `staging` use the same pipeline with a different `ENV`. 
+One Terraform project creates the VPC, the EKS cluster with a node group and a Fargate profile, the EBS CSI driver, the Cluster Autoscaler and MySQL. The same code creates separate `dev`, `test` and `staging` environments. State is stored in S3. There are two Jenkins pipelines: one for the infrastructure (Terraform) and one for the application (build, push, deploy), the same split as a platform team and an app team working in separate repos.
+Note: Only `dev` was applied. `test` and `staging` use the same pipeline with a different `ENV`.
 
 ## How it works
 
@@ -23,12 +23,12 @@ GitHub ──>│ terraform-eks pipeline   │            │ java-app-tf pipeli
 
 Terraform builds the environment, including the database. The app pipeline only deploys the application into it.
 
-| Namespace | What | Runs on | Installed by |
-|---|---|---|---|
-| `default` | MySQL (1 primary + 2 secondaries) | EC2 node group | Terraform (`helm_release`) |
-| `kube-system` | Cluster Autoscaler, EBS CSI driver, CoreDNS | EC2 node group | Terraform |
-| `default` | phpMyAdmin | EC2 node group | app pipeline (Helmfile) |
-| `my-app` | java-app (3 replicas) | Fargate | app pipeline (Helmfile) |
+| Namespace       | What                                        | Runs on        | Installed by                 |
+| --------------- | ------------------------------------------- | -------------- | ---------------------------- |
+| `default`     | MySQL (1 primary + 2 secondaries)           | EC2 node group | Terraform (`helm_release`) |
+| `kube-system` | Cluster Autoscaler, EBS CSI driver, CoreDNS | EC2 node group | Terraform                    |
+| `default`     | phpMyAdmin                                  | EC2 node group | app pipeline (Helmfile)      |
+| `my-app`      | java-app (3 replicas)                       | Fargate        | app pipeline (Helmfile)      |
 
 ## Folder structure
 
@@ -49,14 +49,13 @@ Terraform builds the environment, including the database. The app pipeline only 
 │   │   └── staging.tfvars
 │   └── values/
 │       └── mysql-values.yaml
-└── app/                        → app team (copied from Module 11)
+└── app/                        → app team
     ├── Jenkinsfile
     ├── java-app/
     └── helm/
 ```
 
 ## Terraform project
-
 
 ### `providers.tf`
 
@@ -69,14 +68,13 @@ Terraform builds the environment, including the database. The app pipeline only 
 - `env_prefix` is the environment name. `local.cluster_name` is built from it (`dev-myapp-eks-cluster`), and the VPC, cluster and IAM role names all use it. IAM role names are global in the account, so without the prefix a second environment would fail with "role already exists".
 - `environments/*.tfvars` hold the environment name and the CIDR ranges (`10.0.0.0/16` for dev, `10.1.0.0/16` for test, `10.2.0.0/16` for staging).
 - `mysql_root_password` is a `sensitive` variable with no default. It comes from the environment variable `TF_VAR_mysql_root_password`, so the password is never in a file.
-- Each environment has its own **Terraform workspace**, so each one has its own state file in S3 (`env:/dev/...`, `env:/test/...`). 
+- Each environment has its own **Terraform workspace**, so each one has its own state file in S3 (`env:/dev/...`, `env:/test/...`).
 
 ### `vpc.tf`
 
 3 private and 3 public subnets in 3 AZs, one NAT gateway (`single_nat_gateway`) to save cost, and the `kubernetes.io/...` subnet tags that EKS uses to find the subnets.
 
 ### `eks-cluster.tf`
-
 
 - **Add-ons:** `coredns`, `kube-proxy`, `vpc-cni` and `eks-pod-identity-agent` as EKS managed add-ons; `vpc-cni` and `eks-pod-identity-agent` are installed before the nodes (`before_compute`) because nodes don't become `Ready` without a network plugin.
 - **`aws-ebs-csi-driver` add-on:** creates the EBS volumes for the MySQL PVCs. It gets its IAM role through **Pod Identity**: `aws_ebs_csi_pod_identity` creates a role with the AWS EBS CSI policy, and `pod_identity_association` gives that role only to the driver's service account (`ebs-csi-controller-sa`), not to every pod on the node. `defaultStorageClass = { enabled = true }` creates a default StorageClass (`ebs-csi-default-sc`); new EKS versions don't have one, and the MySQL chart doesn't set a StorageClass, so its PVCs would stay `Pending` without it.
@@ -115,9 +113,7 @@ Pipeline job `terraform-eks`, Script Path `12-terraform/02-projects/terraform/Je
 
 **Jenkins setup.** Terraform `1.16.1` installed in the Jenkins container (same version as local, so the state is written by the same version). AWS CLI, Helm and Helmfile were already installed for Module 11.
 
-## App side (copied from Module 11)
-
-`app/` is the Module 11 project with three changes:
+## App side
 
 - `helm/helmfile.yaml` deploys `phpmyadmin` and `java-app`. phpMyAdmin stays with the app team; it reads the root password from the `mysql` Secret that the MySQL chart creates.
 - `Jenkinsfile`: all paths point to `12-terraform/02-projects/app/...` and `update-kubeconfig` uses the Terraform cluster name `dev-myapp-eks-cluster`.
@@ -178,7 +174,6 @@ Fargate pods use the EKS cluster primary security group. The EC2 nodes (where Co
 ```
 
 The Cluster Autoscaler didn't add a node, because the one node group spans 3 AZs and it can't choose the AZ of a new node. I set the node group back to 3 nodes with `aws eks update-nodegroup-config ... desiredSize=3`; AWS put the new node in eu-central-1b and the pod started. Terraform ignores `desired_size` after creation, so this doesn't cause drift. The better long-term fix is one node group per AZ with the autoscaler option `balance-similar-node-groups`.
-
 
 ## Result
 
@@ -326,7 +321,3 @@ my-app        java-app-deployment-6c4c686b57-lm9kq                         1/1  
 ```
 
 I opened the app and phpMyAdmin through `kubectl port-forward` (`localhost:8080`, `localhost:8081`); both worked.
-
-##
-
-
