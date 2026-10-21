@@ -19,7 +19,7 @@
       register: vpc_info
     
     - name: set vars
-      ansible.builtin.set.fact:
+      ansible.builtin.set_fact:
         vpc_id: "{{vpc_info.vpcs[0].id}}"
 
     - name: Terminate ec2 instances
@@ -43,8 +43,9 @@
       amazon.aws.ec2_vpc_route_table:
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
-        filters:
-          "tag:Role": "nat-route"
+        tags:
+          Environment: ansible-lab
+          Role: nat-route
         state: absent
 
     - name: Terminate private subnet
@@ -52,8 +53,6 @@
         region: "{{ aws_region }}"
         vpc_id: "{{ vpc_id }}"
         cidr: "{{ private_subnet_cidr }}"
-        filters: 
-          "tag:Role": "db-subnet"
         state: absent
 
     - name: Terminate db security group
