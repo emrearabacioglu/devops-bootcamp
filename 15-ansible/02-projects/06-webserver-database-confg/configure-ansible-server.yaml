@@ -7,10 +7,12 @@
       ansible.builtin.dnf:
         update_cache: true
         name:
-          - python3-pip
+          - python3.12
+          - python3.12-pip
 
     - name: install ansible and libs
       ansible.builtin.pip:
+        executable: pip3.12
         name: 
           - ansible
           - boto3

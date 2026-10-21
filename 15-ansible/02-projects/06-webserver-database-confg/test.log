@@ -1,0 +1,619 @@
+
+===== Provision Ansible server =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Launch EC2 Instance] *****************************************************
+
+TASK [Get my public IP] ********************************************************
+ok: [localhost]
+
+TASK [Set my_ip] ***************************************************************
+ok: [localhost]
+
+TASK [Set up key pair] *********************************************************
+changed: [localhost]
+
+TASK [configure sg] ************************************************************
+changed: [localhost]
+
+TASK [create IAM role] *********************************************************
+[DEPRECATION WARNING]: In a release after 2026-05-01 iam_role.assume_role_policy_document_raw will no longer be returned.  Since release 8.0.0 assume_role_policy_document has been returned with the same format as iam_role.assume_role_policy_document_raw. This feature will be removed from collection 'amazon.aws' in a release after 2026-05-01.
+[DEPRECATION WARNING]: In a release after 2026-05-01 the 'create_instance_profile' option will be removed. The amazon.aws.iam_instance_profile module can be used to manage instance profiles instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-05-01.
+[DEPRECATION WARNING]: In a release after 2026-05-01 the 'delete_instance_profile' option will be removed. The amazon.aws.iam_instance_profile module can be used to manage and delete instance profiles instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-05-01.
+changed: [localhost]
+
+TASK [Launch EC2 Instance] *****************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=6    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== Wait for SSH (max 3 min) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | UNREACHABLE!: Task failed: Failed to connect to the host via ssh: ssh: connect to host ec2-3-127-219-157.eu-central-1.compute.amazonaws.com port 22: Connection refused
+not ready yet (1/18)
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.9"},"changed": false,"ping": "pong"}
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The '-o' argument is deprecated. This feature will be removed from ansible-core version 2.23. Use callback configuration to enable the oneline callback instead.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[DEPRECATION WARNING]: oneline has been deprecated. Use another callback plugin, or vendor and/or move the oneline callback to a collection. This feature will be removed from ansible-core version 2.23.
+Origin: <unknown>
+
+oneline
+
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3.9"},"changed": false,"ping": "pong"}
+
+===== Configure Ansible server =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+
+PLAY [Configure instance for ansible] ******************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.9', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ok: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+TASK [install pip] *************************************************************
+changed: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+TASK [install ansible and libs] ************************************************
+changed: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+TASK [copy private key] ********************************************************
+changed: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+TASK [copy playbooks and jar file] *********************************************
+changed: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+TASK [install mysql roles] *****************************************************
+[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
+Origin: /root/twn/devops-bootcamp-update/15-ansible/02-projects/06-webserver-database-confg/configure-ansible-server.yaml:35:15
+
+33     - name: install mysql roles
+34       environment:
+35         PATH: "/home/ec2-user/.local/bin:{{ ansible_env.PATH }}"
+                 ^ column 15
+
+Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
+
+changed: [ec2-3-127-219-157.eu-central-1.compute.amazonaws.com]
+
+PLAY RECAP *********************************************************************
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com : ok=6    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== On control node: inventory before provisioning =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+@all:
+  |--@ungrouped:
+  |--@aws_ec2:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Name_ansible_server:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_OS_amazon:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Environment_ansible_lab:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Role_ansible_server:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+===== On control node: provision web + db (NAT takes a few minutes) =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+
+PLAY [Provision webserver and database server] *********************************
+
+TASK [get default vpc id] ******************************************************
+ok: [localhost]
+
+TASK [get subnet info] *********************************************************
+ok: [localhost]
+
+TASK [Save network info] *******************************************************
+ok: [localhost]
+
+TASK [Create private subnet] ***************************************************
+changed: [localhost]
+
+TASK [Create NAT gateway] ******************************************************
+changed: [localhost]
+
+TASK [Save private subnet and NAT info] ****************************************
+ok: [localhost]
+
+TASK [Create route table] ******************************************************
+changed: [localhost]
+
+TASK [configure sg for webserver] **********************************************
+changed: [localhost]
+
+TASK [configure sg for db] *****************************************************
+changed: [localhost]
+
+TASK [Launch webserver EC2 Instance] *******************************************
+changed: [localhost]
+
+TASK [Launch database EC2 Instance] ********************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=11   changed=7    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   [WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+===== On control node: inventory after provisioning =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+@all:
+  |--@ungrouped:
+  |--@aws_ec2:
+  |  |--ec2-3-73-152-136.eu-central-1.compute.amazonaws.com
+  |  |--ip-172-31-59-194.eu-central-1.compute.internal
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Environment_ansible_lab:
+  |  |--ec2-3-73-152-136.eu-central-1.compute.amazonaws.com
+  |  |--ip-172-31-59-194.eu-central-1.compute.internal
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Name_web_server:
+  |  |--ec2-3-73-152-136.eu-central-1.compute.amazonaws.com
+  |--@tag_OS_ubuntu:
+  |  |--ec2-3-73-152-136.eu-central-1.compute.amazonaws.com
+  |  |--ip-172-31-59-194.eu-central-1.compute.internal
+  |--@tag_Role_web_server:
+  |  |--ec2-3-73-152-136.eu-central-1.compute.amazonaws.com
+  |--@tag_Role_db_server:
+  |  |--ip-172-31-59-194.eu-central-1.compute.internal
+  |--@tag_Name_db_server:
+  |  |--ip-172-31-59-194.eu-central-1.compute.internal
+  |--@tag_Name_ansible_server:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_OS_amazon:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com
+  |--@tag_Role_ansible_server:
+  |  |--ec2-3-127-219-157.eu-central-1.compute.amazonaws.com[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+===== On control node: configure MySQL + deploy Java app =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+
+PLAY [Configure mysql database] ************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/variables.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Include OS-specific variables.] **********************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=/home/ec2-user/.ansible/roles/geerlingguy.mysql/vars/Debian.yml)
+
+TASK [geerlingguy.mysql : Define mysql_packages.] ******************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_daemon.] ********************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Include distribution and database engine-specific variable overrides.] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_slow_query_log_file.] *******************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_log_error.] *****************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_syslog_tag.] ****************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_pid_file.] ******************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_config_file.] ***************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_config_include_dir.] ********************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_socket.] ********************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Define mysql_supports_innodb_large_prefix.] **********
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/setup-Debian.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Check if MySQL is already installed.] ****************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Update apt cache if MySQL is not yet installed.] *****
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure MySQL Python libraries are installed.] ********
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure MySQL packages are installed.] ****************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure MySQL is stopped after initial install.] ******
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Delete innodb log files created by apt package after initial install.] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=ib_logfile0) 
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=ib_logfile1) 
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Check if MySQL packages were installed.] *************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/configure.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Run mysql --version] *********************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Extract MySQL version] *******************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Copy my.cnf global MySQL configuration.] *************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Verify mysql include directory exists.] **************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Copy my.cnf override files into include directory.] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Create datadir if it does not exist] *****************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure error log directory exists] *******************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure slow query log file exists and has correct permissions] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure error log file exists and has correct permissions] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Ensure MySQL is started and enabled on boot.] ********
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/secure-installation.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Ensure default user is present.] *********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Copy user-my.cnf file with password credentials.] ****
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Disallow root login remotely] ************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1'))
+
+TASK [geerlingguy.mysql : Get list of hosts for the root user.] ****************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Update MySQL root authentication via socket for localhost (Linux, MySQL ≥ 8.4)] ***
+changed: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=localhost)
+
+TASK [geerlingguy.mysql : Update MySQL root password for localhost root account (5.7.x ≤ MySQL < 8.4)] ***
+changed: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=localhost)
+
+TASK [geerlingguy.mysql : Update MySQL root password for localhost root account (< 5.7.x).] ***
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal] => (item=None) 
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Copy .my.cnf file with root password credentials.] ***
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Get list of hosts for the anonymous user.] ***********
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Remove anonymous MySQL users.] ***********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Remove MySQL test database.] *************************
+ok: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/databases.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Ensure MySQL databases are present.] *****************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal] => (item={'name': 'my_db'})
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/users.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Ensure MySQL users are present.] *********************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal] => (item={'name': 'emre', 'host': '%', 'password': 'mysql123', 'priv': 'my_db.*:ALL'})
+
+TASK [geerlingguy.mysql : ansible.builtin.include_tasks] ***********************
+included: /home/ec2-user/.ansible/roles/geerlingguy.mysql/tasks/replication.yml for ip-172-31-59-194.eu-central-1.compute.internal
+
+TASK [geerlingguy.mysql : Ensure replication user exists on master.] ***********
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Check slave replication status.] *********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Check master replication status.] ********************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Configure replication on the slave.] *****************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+TASK [geerlingguy.mysql : Start replication.] **********************************
+skipping: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+RUNNING HANDLER [geerlingguy.mysql : restart mysql] ****************************
+changed: [ip-172-31-59-194.eu-central-1.compute.internal]
+
+PLAY [Create linux user and check/install java] ********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [create user] *************************************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [update apt repo cache] ***************************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Install Java] ************************************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Install acl (needed for become_user)] ************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+PLAY [Clear old file and stop running java app] ********************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Find jar file] ***********************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [ansible.builtin.debug] ***************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com] => {
+    "msg": {
+        "changed": false,
+        "examined": 4,
+        "failed": false,
+        "files": [],
+        "matched": 0,
+        "msg": "All paths examined",
+        "skipped_paths": {}
+    }
+}
+
+TASK [get java app's process id] ***********************************************
+skipping: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [ansible.builtin.debug] ***************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com] => {
+    "msg": {
+        "changed": false,
+        "failed": false,
+        "false_condition": "jar_files.files != []",
+        "skip_reason": "Conditional result was False",
+        "skipped": true
+    }
+}
+
+TASK [Kill Java processes] *****************************************************
+skipping: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [remove old jar] **********************************************************
+skipping: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+PLAY [Deploy java application] *************************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Copy jar file to remote server] ******************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Start the application] ***************************************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [wait for app to listen 8080] *********************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [Check that application started and is running] ***************************
+changed: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com]
+
+TASK [ansible.builtin.debug] ***************************************************
+ok: [ec2-3-73-152-136.eu-central-1.compute.amazonaws.com] => {
+    "msg": [
+        "javauser    2774  169  9.4 3101224 185412 ?      Sl   10:48   0:10 java -jar build-tools-exercises-1.0-SNAPSHOT.jar",
+        "ubuntu      2844  0.0  0.1   2812  1972 pts/0    Ss+  10:48   0:00 /bin/sh -c sudo -H -S -n  -u javauser /bin/sh -c 'echo BECOME-SUCCESS-cruebkpcgcyzlcopoyxnhocpgsqdodyk ; /usr/bin/python3.12 /var/tmp/ansible-tmp-1792579703.4738824-29302-130350479143060/AnsiballZ_command.py'",
+        "root        2845  0.0  0.3  17320  7352 pts/0    S+   10:48   0:00 sudo -H -S -n -u javauser /bin/sh -c echo BECOME-SUCCESS-cruebkpcgcyzlcopoyxnhocpgsqdodyk ; /usr/bin/python3.12 /var/tmp/ansible-tmp-1792579703.4738824-29302-130350479143060/AnsiballZ_command.py",
+        "root        2846  0.0  0.1  17320  2640 pts/1    Ss   10:48   0:00 sudo -H -S -n -u javauser /bin/sh -c echo BECOME-SUCCESS-cruebkpcgcyzlcopoyxnhocpgsqdodyk ; /usr/bin/python3.12 /var/tmp/ansible-tmp-1792579703.4738824-29302-130350479143060/AnsiballZ_command.py",
+        "javauser    2847  0.0  0.1   2812  1984 pts/1    S+   10:48   0:00 /bin/sh -c echo BECOME-SUCCESS-cruebkpcgcyzlcopoyxnhocpgsqdodyk ; /usr/bin/python3.12 /var/tmp/ansible-tmp-1792579703.4738824-29302-130350479143060/AnsiballZ_command.py",
+        "javauser    2848 92.0  1.4  40896 28832 pts/1    S+   10:48   0:00 /usr/bin/python3.12 /var/tmp/ansible-tmp-1792579703.4738824-29302-130350479143060/AnsiballZ_command.py",
+        "javauser    2849  0.0  0.1   2812  2032 pts/1    S+   10:48   0:00 /bin/sh -c ps aux | grep java",
+        "javauser    2850  0.0  0.2  11336  4516 pts/1    R+   10:48   0:00 ps aux",
+        "javauser    2851  0.0  0.1   7088  2228 pts/1    S+   10:48   0:00 grep java"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+ec2-3-73-152-136.eu-central-1.compute.amazonaws.com : ok=15   changed=7    unreachable=0    failed=0    skipped=3    rescued=0    ignored=0   
+ip-172-31-59-194.eu-central-1.compute.internal : ok=41   changed=12   unreachable=0    failed=0    skipped=17   rescued=0    ignored=0   [WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ip-172-31-59-194.eu-central-1.compute.internal' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[DEPRECATION WARNING]: community.mysql.mysql_user has been deprecated. Use ansible.mysql.mysql_user instead. This feature will be removed from collection 'community.mysql' version 6.0.0.
+Origin: <unknown>
+
+community.mysql.mysql_user
+
+[DEPRECATION WARNING]: community.mysql.mysql_db has been deprecated. Use ansible.mysql.mysql_db instead. This feature will be removed from collection 'community.mysql' version 6.0.0.
+Origin: <unknown>
+
+community.mysql.mysql_db
+
+[WARNING]: Support of mysqlcline/MySQLdb connector is deprecated. We'll stop testing against it in collection version 4.0.0 and remove the related code in 5.0.0. Use PyMySQL connector instead.
+[DEPRECATION WARNING]: community.mysql.mysql_replication has been deprecated. Use ansible.mysql.mysql_replication instead. This feature will be removed from collection 'community.mysql' version 6.0.0.
+Origin: <unknown>
+
+community.mysql.mysql_replication
+
+[WARNING]: Host 'ec2-3-73-152-136.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+[WARNING]: Module remote_tmp /home/javauser/.ansible/tmp did not exist and was created with a mode of 0700, this may cause issues when running as another user. To avoid this, create the remote_tmp dir with the correct permissions manually
+
+===== App reachable from the internet on 8080 (max 2 min) =====
+web server: http://3.73.152.136:8080
+HTTP 200
+
+===== APP IS UP: http://3.73.152.136:8080 =====
+Press Enter to destroy now (auto-destroy in 10 min)... 
+===== On control node: destroy web + db + network =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+[WARNING]: Host 'ec2-3-127-219-157.eu-central-1.compute.amazonaws.com' is using the discovered Python interpreter at '/usr/bin/python3.12', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.21/reference_appendices/interpreter_discovery.html for more information.
+ec2-3-127-219-157.eu-central-1.compute.amazonaws.com | CHANGED | rc=0 >>
+
+PLAY [Destroy  resources] ******************************************************
+
+TASK [get nat gateway info] ****************************************************
+ok: [localhost]
+
+TASK [get vpc info] ************************************************************
+ok: [localhost]
+
+TASK [set vars] ****************************************************************
+ok: [localhost]
+
+TASK [Terminate ec2 instances] *************************************************
+changed: [localhost]
+
+TASK [Terminate NAT gateway] ***************************************************
+changed: [localhost] => (item={'create_time': '2026-10-21T10:43:24+00:00', 'nat_gateway_addresses': [{'allocation_id': 'eipalloc-0f06857aa2f87882e', 'network_interface_id': 'eni-0ceff5a0d840c807a', 'private_ip': '172.31.42.193', 'public_ip': '18.156.93.174', 'association_id': 'eipassoc-0c84a939635502692', 'is_primary': True, 'status': 'succeeded'}], 'nat_gateway_id': 'nat-03d2041e71854d7ad', 'state': 'available', 'subnet_id': 'subnet-032ab55e5aac31a61', 'vpc_id': 'vpc-0511d66bb75f2d673', 'tags': {'Role': 'db-nat', 'Environment': 'ansible-lab'}, 'connectivity_type': 'public', 'availability_mode': 'zonal', 'attached_appliances': []})
+
+TASK [Terminate route table] ***************************************************
+changed: [localhost]
+
+TASK [Terminate private subnet] ************************************************
+changed: [localhost]
+
+TASK [Terminate db security group] *********************************************
+changed: [localhost]
+
+TASK [Terminate webserver security group] **************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=9    changed=6    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   [WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+===== Destroy Ansible server, its SG, IAM role, key pair =====
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+PLAY [Terminate Ansible Control Node Resources] ********************************
+
+TASK [Terminate ec2 instance] **************************************************
+changed: [localhost]
+
+TASK [Terminate sg] ************************************************************
+changed: [localhost]
+
+TASK [Terminate IAM Role] ******************************************************
+[DEPRECATION WARNING]: In a release after 2026-05-01 iam_role.assume_role_policy_document_raw will no longer be returned.  Since release 8.0.0 assume_role_policy_document has been returned with the same format as iam_role.assume_role_policy_document_raw. This feature will be removed from collection 'amazon.aws' in a release after 2026-05-01.
+[DEPRECATION WARNING]: In a release after 2026-05-01 the 'create_instance_profile' option will be removed. The amazon.aws.iam_instance_profile module can be used to manage instance profiles instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-05-01.
+changed: [localhost]
+
+TASK [Terminate keypair] *******************************************************
+changed: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=4    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+===== ALL DONE =====

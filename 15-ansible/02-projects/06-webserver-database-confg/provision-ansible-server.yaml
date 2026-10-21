@@ -51,7 +51,7 @@
         name: ansible-server
         key_name: ansible-key
         instance_type: t3.small
-        security_group: ansible sg
+        security_group: ansible-sg
         iam_instance_profile: ansible-role
         region: "{{ aws_region }}"
         image_id: "{{ lookup('amazon.aws.ssm_parameter', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', region=aws_region) }}"

@@ -10,9 +10,6 @@
           "is-default": "true"
       register: vpc_info
 
-    - ansible.builtin.debug: msg="{{vpc_info.vpcs[0].id}}"
-    - ansible.builtin.debug: msg="{{ vpc_info.vpcs[0].cidr_block }}"
-
     - name: get subnet info
       amazon.aws.ec2_vpc_subnet_info:
         region: "{{ aws_region }}"
@@ -20,9 +17,6 @@
           vpc-id: "{{vpc_info.vpcs[0].id}}"
           "default-for-az": "true"
       register: subnet_info
-
-    - ansible.builtin.debug: msg="{{ subnet_info.subnets | map(attribute='cidr_block') | list }}"
-    - ansible.builtin.debug: msg="{{ subnet_info.subnets[0].id }}"
 
     - name: Save network info
       ansible.builtin.set_fact:
@@ -56,8 +50,6 @@
           Environment: ansible-lab
           Role: db-nat
       register: nat_info
-    - ansible.builtin.debug: msg="{{prv_subnet_info.subnet.id}}"
-    - ansible.builtin.debug: msg="{{nat_info.nat_gateway_id}}"
 
     - name: Save private subnet and NAT info
       ansible.builtin.set_fact:
