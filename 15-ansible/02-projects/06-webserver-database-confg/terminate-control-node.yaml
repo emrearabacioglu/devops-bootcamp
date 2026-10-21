@@ -9,7 +9,7 @@
         name: ansible-server
         filters: 
           "tag:Role": ansible-server
-          instance-state-name: ["running", "pending", "stopped"]
+          instance-state-name: ["running", "pending", "stopped", "stopping"]
         state: absent
       
     - name: Terminate sg
