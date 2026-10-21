@@ -7,4 +7,8 @@ image:
   repository: bitnamilegacy/mysql
 architecture: replication
 secondary:
-  replicaCount: 1
+  replicaCount: 2
+auth:
+  existingSecret: db-secret
+  username: emre
+  database: db-mysql

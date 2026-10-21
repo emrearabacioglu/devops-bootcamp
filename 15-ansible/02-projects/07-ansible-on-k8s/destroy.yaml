@@ -9,6 +9,22 @@
         release_namespace: ingress-nginx
         state: absent
         wait: true
+
+    - name: Destroy mysql release
+      kubernetes.core.helm:
+        name: mysql
+        release_namespace: default
+        state: absent
+        wait: true
+      
+    - name: Destroy PVCs
+      kubernetes.core.k8s:
+        kind: PersistentVolumeClaim
+        namespace: default
+        state: absent
+        label_selectors:
+          - app.kubernetes.io/instance=mysql
+        delete_all: true
     
     - ansible.builtin.pause:
         seconds: 90
