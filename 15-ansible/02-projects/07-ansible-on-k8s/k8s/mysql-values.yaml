@@ -1,0 +1,10 @@
+global:
+  security:
+    allowInsecureImages: True
+image:
+  registry: docker.io
+  tag: latest
+  repository: bitnamilegacy/mysql
+architecture: replication
+secondary:
+  replicaCount: 1

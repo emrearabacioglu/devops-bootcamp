@@ -1,0 +1,26 @@
+---
+- name: Destroy all resources
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: destroy nginx contoller
+      kubernetes.core.helm:
+        name: ingress-nginx
+        release_namespace: ingress-nginx
+        state: absent
+        wait: true
+    
+    - ansible.builtin.pause:
+        seconds: 90
+
+    - name: destroy cluster resources by terraform
+      ansible.builtin.command: terraform destroy -auto-approve -var-file=environments/dev.tfvars
+      args:
+        chdir: "{{ playbook_dir }}/terraform"
+      
+    - name: destroy ecr erpo
+      community.aws.ecs_ecr:
+        region: "{{ aws_region }}"
+        name: java-app
+        state: absent
+        force_absent: true
