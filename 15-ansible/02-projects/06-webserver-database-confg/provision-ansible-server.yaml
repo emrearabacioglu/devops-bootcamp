@@ -19,6 +19,9 @@
         region: "{{ aws_region }}"
         key_material: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
         force: false
+        tags:
+          Environment: ansible-lab
+          
     - name: configure sg
       amazon.aws.ec2_security_group:
         name: ansible sg
@@ -29,6 +32,8 @@
             from_port: 22
             to_port: 22
             cidr_ip: "{{ my_ip }}/32"
+        tags:
+          Environment: ansible-lab
 
     - name: create IAM role
       amazon.aws.iam_role: 
@@ -38,6 +43,8 @@
         managed_policies:
           - arn:aws:iam::aws:policy/AmazonEC2FullAccess
           - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+        tags:
+          Environment: ansible-lab
 
     - name: Launch EC2 Instance
       amazon.aws.ec2_instance:
