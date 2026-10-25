@@ -1,0 +1,35 @@
+---
+- name: Build the image from local Dockerfile and push to ECR
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Build Jar
+      ansible.builtin.command: gradle clean build
+      args:
+        chdir: "{{ playbook_dir }}/java-app"
+      
+    - name: get aws info
+      amazon.aws.aws_caller_info:
+      register: caller_info
+    
+    - name: create ecr erpo
+      community.aws.ecs_ecr:
+        region: "{{ aws_region }}"
+        name: java-app
+      register: ecr_repo
+    
+    - name: login ECR
+      community.docker.docker_login:
+        registry_url: "{{ caller_info.account }}.dkr.ecr.eu-central-1.amazonaws.com"
+        username: AWS
+        password: "{{ lookup('pipe', 'aws ecr get-login-password --region ' ~ aws_region) }}"
+      
+    - name: Build Docker Image
+      community.docker.docker_image:
+        name: "{{ ecr_repo.repository.repositoryUri }}"
+        source: build
+        build:
+          path: "{{ playbook_dir }}/java-app"
+        push: true
+        tag: "1.0"
+        force_source: true

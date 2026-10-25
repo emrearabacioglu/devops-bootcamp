@@ -1,0 +1,42 @@
+---
+- name: Destroy all resources
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: destroy nginx contoller
+      kubernetes.core.helm:
+        name: ingress-nginx
+        release_namespace: ingress-nginx
+        state: absent
+        wait: true
+
+    - name: Destroy mysql release
+      kubernetes.core.helm:
+        name: mysql
+        release_namespace: default
+        state: absent
+        wait: true
+      
+    - name: Destroy PVCs
+      kubernetes.core.k8s:
+        kind: PersistentVolumeClaim
+        namespace: default
+        state: absent
+        label_selectors:
+          - app.kubernetes.io/instance=mysql
+        delete_all: true
+    
+    - ansible.builtin.pause:
+        seconds: 90
+
+    - name: destroy cluster resources by terraform
+      ansible.builtin.command: terraform destroy -auto-approve -var-file=environments/dev.tfvars
+      args:
+        chdir: "{{ playbook_dir }}/terraform"
+      
+    - name: destroy ecr erpo
+      community.aws.ecs_ecr:
+        region: "{{ aws_region }}"
+        name: java-app
+        state: absent
+        force_absent: true

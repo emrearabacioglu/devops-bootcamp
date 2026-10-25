@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-app-deployment
+  labels:
+    app: java-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: java-app
+  template:
+    metadata:
+      labels:
+        app: java-app
+    spec:
+      containers:
+      - name: java-app
+        image: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-app:1.0
+        ports:
+        - containerPort: 8080
+        env:
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: DB_USER
+          - name: DB_PWD
+            valueFrom:
+              secretKeyRef:
+                name: db-secret
+                key: DB_PWD
+          - name: DB_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: db-config
+                key: DB_NAME
+          - name: DB_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: db-config
+                key: DB_SERVER
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-app-service
+spec:
+  selector:
+    app: java-app
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
