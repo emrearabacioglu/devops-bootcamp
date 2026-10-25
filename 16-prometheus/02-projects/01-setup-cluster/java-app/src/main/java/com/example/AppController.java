@@ -1,6 +1,5 @@
 package com.example;
 
-import io.prometheus.client.CollectorRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,16 +12,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
+import io.prometheus.metrics.core.metrics.Counter;
+import io.prometheus.metrics.core.metrics.Gauge;
 
 @RestController
 public class AppController {
 
     private final Connection dbConnection;
-    static final Counter totalRequests = Counter.build()
+    static final Counter totalRequests = Counter.builder()
             .name("java_app_http_requests_total").help("Total requests.").register();
-    static final Gauge inprogressRequests = Gauge.build()
+    static final Gauge inprogressRequests = Gauge.builder()
             .name("java_app_inprogress_requests").help("Inprogress requests.").register();
 
     public AppController(Connection dbConnection) {
