@@ -7,21 +7,21 @@ A Java web app with a MySQL database on an EKS cluster, deployed entirely with A
 ## How it works
 
 ```
-terraform/                       VPC (3 public + 3 private subnets, NAT) + EKS (3 × t3.medium, EBS CSI driver)
-        │
+       terraform/               VPC (3 public + 3 private subnets, NAT) + EKS (3 × t3.medium, EBS CSI driver)
+           │
 build-image-push-to-ecr.yaml     gradle build → ECR repo → docker login (ECR token) → build + push java-app:1.0
-        │
-deploy-to-cluster.yaml           kubeconfig ← terraform output
-        │                        ingress-nginx chart → AWS load balancer
-        │                        Secret + ConfigMap → MySQL Deployment (1 pod) → Java Deployment (3 pods) → Ingress
-        │                        prints http://<load-balancer-dns>
-        │
+           │
+  deploy-to-cluster.yaml         kubeconfig ← terraform output
+           │                     ingress-nginx chart → AWS load balancer
+           │                     Secret + ConfigMap → MySQL Deployment (1 pod) → Java Deployment (3 pods) → Ingress
+           │                     prints http://<load-balancer-dns>
+           │
 migrate-mysql-to-helm.yaml       MySQL chart: mysql-primary-0, mysql-secondary-0/1, one EBS volume each
-        │                        ConfigMap DB_SERVER: db-server → mysql-primary
-        │                        rollout restart of the Java pods, wait until ready
-        │                        delete the old MySQL Deployment
-        │
-destroy.yaml                     ingress-nginx (load balancer) → MySQL chart → PVCs (EBS volumes)
+           │                     ConfigMap DB_SERVER: db-server → mysql-primary
+           │                     rollout restart of the Java pods, wait until ready
+           │                     delete the old MySQL Deployment
+           │
+      destroy.yaml               ingress-nginx (load balancer) → MySQL chart → PVCs (EBS volumes)
                                  → terraform destroy → ECR repo
 ```
 
