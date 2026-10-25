@@ -10,6 +10,18 @@
   - name: update kubeconfig
     ansible.builtin.command: "aws eks update-kubeconfig --name {{ cluster_name }} --region {{ aws_region }}"
 
+  - name: deploy prometheus chart
+    kubernetes.core.helm:
+      name: prometheus
+      chart_ref: kube-prometheus-stack
+      chart_repo_url: https://prometheus-community.github.io/helm-charts
+      release_namespace: monitoring
+      create_namespace: true
+      values_files:
+        - "{{ playbook_dir }}/k8s/prometheus-values.yaml"
+      wait: true
+      wait_timeout: 600s
+
   - name: deploy nginx
     kubernetes.core.helm:
       name: ingress-nginx
