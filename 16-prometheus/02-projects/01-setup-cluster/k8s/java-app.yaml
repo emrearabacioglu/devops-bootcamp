@@ -60,3 +60,20 @@ spec:
     name: metrics
     port: 8081
     targetPort: 8081
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: monitoring-java-app
+  labels:
+    app: java-app
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+  namespaceSelector:
+    matchNames:
+    - default
+  selector:
+    matchLabels:
+      app: java-app

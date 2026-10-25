@@ -12,3 +12,10 @@ auth:
   existingSecret: db-secret
   username: emre
   database: db-mysql
+metrics:
+  enabled: true
+  image:
+    repository: bitnamilegacy/mysqld-exporter
+  serviceMonitor: 
+    enabled: true
+  

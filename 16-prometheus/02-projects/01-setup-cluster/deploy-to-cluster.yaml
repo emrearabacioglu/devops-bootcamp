@@ -29,6 +29,8 @@
       chart_repo_url: https://kubernetes.github.io/ingress-nginx
       release_namespace: ingress-nginx
       create_namespace: true
+      values_files: 
+        - "{{ playbook_dir }}/k8s/nginx-values.yaml"
       wait: true
 
   - name: Create secret
