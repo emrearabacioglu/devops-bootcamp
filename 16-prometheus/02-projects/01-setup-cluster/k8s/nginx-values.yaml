@@ -1,4 +1,6 @@
 controller:
+  extraArgs:
+    metrics-per-undefined-host: "true"
   metrics:
     enabled: true
     serviceMonitor:

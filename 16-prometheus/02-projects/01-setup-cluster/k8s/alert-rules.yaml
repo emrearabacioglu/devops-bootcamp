@@ -1,0 +1,68 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alert-rules
+  namespace: monitoring
+spec:
+  groups:
+  - name: nginx
+    rules:
+    - alert: NginxHigh4xxRate
+      expr: ((sum(rate(nginx_ingress_controller_requests{status=~"4.."}[5m])) / sum(rate(nginx_ingress_controller_requests[5m]))) * 100) > 5
+      for: 2m
+      labels:
+        severity: warning
+        team: k8s-admin
+        namespace: monitoring
+      annotations:
+        summary: high 4xx rate
+        description: 4xx rate is {{ $value | humanize }} % last 5 minutes
+
+  - name: mysql
+    rules:
+    - alert: MysqlDown
+      expr: sum(mysql_up) == 0 or absent(mysql_up)
+      for: 1m
+      labels:
+        severity: 
+        team: developers
+        namespace: monitoring
+      annotations:
+        summary: mysql down
+        description: all mysql instances are down
+    - alert: MysqlTooManyConnections
+      expr: ((mysql_global_status_threads_connected/mysql_global_variables_max_connections) * 100) > 80
+      for: 1m
+      labels:
+        severity: warning
+        team: developers
+        namespace: monitoring
+      annotations:
+        summary: mysql too many connections
+        description: "{{ $labels.pod }} uses {{ $value | humanize }}% of max connections"
+
+  - name: java-app
+    rules:
+    - alert: AppTooManyRequests
+      expr: sum(rate(java_app_http_requests_total[1m])) > 2
+      for: 1m 
+      labels: 
+        severity: warning
+        team: developers
+        namespace: monitoring
+      annotations:
+        summary: app gets too many requests
+        description: app gets {{ $value | humanize }} requests per second
+
+  - name: kubernetes
+    rules:
+    - alert: StatefulSetReplicasMismatch
+      expr: kube_statefulset_status_replicas_ready != kube_statefulset_replicas
+      for: 1m
+      labels:
+        severity: warning
+        team: k8s-admin
+        namespace: monitoring
+      annotations:
+        summary: statefulset replicas mismatch
+        description: "{{ $labels.namespace }}/{{ $labels.statefulset }} has not the desired number of ready replicas"
