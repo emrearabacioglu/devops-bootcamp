@@ -148,7 +148,9 @@ Argo CD (in the cluster) <── watches app/gitops/envs/<env>/ on main ──�
 - **No AWS keys in GitHub.** Each job gets a GitHub OIDC token, and AWS exchanges it for temporary credentials of one role. The trust policies check the `sub` claim, so a token from another repository or another branch is refused.
 - **Plan and apply are different roles.** Plans run with a read-only role. Only the apply job has the admin role, and its trust policy accepts only tokens that carry `environment:<env>`. A job gets that claim only by running in the GitHub Environment, and the environment has required reviewers. The approval and the permission are the same gate: nobody can skip the approval and still get the role.
 - **The approved plan is the applied plan.** The plan job uploads the binary `tfplan`, the apply job downloads it and runs `terraform apply tfplan`. The provider lock file is committed, so both jobs use the same provider versions. The binary plan can contain the MySQL password, so the artifact is kept for 1 day.
-- **The plan role can read the cluster, not change it.** Refreshing the Helm releases needs the cluster, so the plan role gets an EKS access entry with `AmazonEKSAdminViewPolicy` (the View policy can't read Secrets, where Helm keeps its releases). The apply role is the cluster creator and gets admin.
+- **The plan role can read the cluster, not change it.** Refreshing the Helm releases needs the cluster, so the plan role gets an EKS access entry with `AmazonEKSAdminViewPolicy` (the View policy can't read Secrets, where Helm keeps its releases). The apply role gets `AmazonEKSClusterAdminPolicy` through its own access entry.
+- **Cluster admin is named, not taken from the caller.** The EKS module makes "whoever runs Terraform" the cluster admin, and it decides that at plan time. Here the plan and the apply run as different roles, so the read-only plan role would have become cluster admin and the apply role would have had no access to the cluster. With `gitops_enabled` the module's creator entry is off and the apply role is named in `access_entries` and as the KMS key administrator. The Claude review found this on the first PR, before anything was applied.
+- **Clean up inside the cluster before destroy.** Terraform removes the Helm releases in parallel. In the first destroy, External Secrets was removed while an `ExternalSecret` still existed, its finalizer blocked the uninstall, and the run stopped halfway. The MySQL volumes also outlived the EBS CSI driver's IAM policy, so they couldn't be detached. I fixed both by hand (see Result). The destroy now first deletes Argo CD's apps, the `my-app` namespace and the MySQL volumes while those controllers still run. This step uses the same commands as the manual fix, but it hasn't run in a full destroy yet.
 - **CI has no access to the cluster.** The app workflow only pushes an image and a commit. Argo CD pulls the change. What runs in the cluster is always what is in Git, and `selfHeal` reverts manual changes.
 - **App of apps per environment.** Terraform installs Argo CD and one root Application that points to `app/gitops/envs/<env>/`. Adding an app to an environment means adding a manifest there, not changing Terraform.
 - **Charts reused, values per environment.** The Argo CD Applications use the existing charts in `app/helm/charts` with a second source (`ref: values`) for the environment's values file. Promoting a version to `test` or `staging` is a change to that environment's `appVersion`.
@@ -196,7 +198,75 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.pas
 ```
 
 5. Delete it: run `terraform-eks` with `env=dev` and `action=destroy` and approve.
+6. Check that nothing is left. The EKS module's KMS key stays in `PendingDeletion` for 30 days (AWS doesn't allow less than 7):
+
+```bash
+aws ec2 describe-volumes --region eu-central-1 --query 'Volumes[].[VolumeId,State]'
+aws ec2 describe-nat-gateways --region eu-central-1 --filter Name=state,Values=available
+aws kms list-keys --region eu-central-1
+aws secretsmanager list-secrets --region eu-central-1 --include-planned-deletion
+```
+
+To remove everything for good: `terraform destroy` in `bootstrap/`, delete the ECR repository and the state bucket.
 
 ### Result
 
-_To be filled in after the `dev` test run._
+Only `dev` was applied, on 2026-11-22.
+
+**Pull request with the plan review.** The first plan failed on my own bug: the External Secrets role name was 39 characters, and IAM allows 38 for a name prefix. After the fix, Claude's risk summary on the PR found the cluster admin problem described in Decisions. I fixed it, and the next comment confirmed that the plan role only had `AmazonEKSAdminViewPolicy`. Every push updated the same comment.
+
+**Apply.** The `dev` run planned, waited for my approval in the `dev` environment and applied the saved plan: `Apply complete! Resources: 87 added, 0 changed, 0 destroyed.` My IAM user had `kubectl` access through `CLUSTER_ADMIN_ARNS`:
+
+```
+$ aws eks list-access-entries --cluster-name dev-myapp-eks-cluster
+arn:aws:iam::731872836472:role/gha-terraform-apply
+arn:aws:iam::731872836472:role/gha-terraform-plan
+arn:aws:iam::731872836472:user/admin
+...
+```
+
+**Argo CD and External Secrets.** Argo CD synced the root app and its three apps from `main`. External Secrets read `dev/myapp/db` from Secrets Manager into `db-secret`:
+
+```
+$ kubectl get applications -n argocd
+NAME         SYNC STATUS   HEALTH STATUS
+java-app     Synced        Healthy
+phpmyadmin   Synced        Healthy
+root         Synced        Healthy
+secrets      Synced        Healthy
+
+$ kubectl get externalsecret,secret db-secret -n my-app
+NAME                                           STORETYPE            STORE                 REFRESH INTERVAL   STATUS         READY
+externalsecret.external-secrets.io/db-secret   ClusterSecretStore   aws-secrets-manager   1h                 SecretSynced   True
+
+NAME               TYPE     DATA   AGE
+secret/db-secret   Opaque   3      8m18s
+```
+
+The java-app pods first failed with `ImagePullBackOff`, because the new ECR repository had no `1.0.0` image yet. That was expected.
+
+**App workflow.** `java-app-gitops` bumped the version to `1.3.0`, pushed `java-app:1.3.0-1` to ECR with the OIDC role and committed `ci: deploy java-app 1.3.0-1 to dev` to `main`. Argo CD picked up the commit and rolled out the new image. The app answered on `/get-data` with the rows from MySQL.
+
+```
+$ kubectl get pods -n my-app
+NAME                                   READY   STATUS    RESTARTS   AGE
+java-app-deployment-8589f7cfc8-7zk7x   1/1     Running   0          2m38s
+java-app-deployment-8589f7cfc8-cwmgc   1/1     Running   0          108s
+java-app-deployment-8589f7cfc8-n78ml   1/1     Running   0          3m26s
+```
+
+![Argo CD root app with its three apps](./images/argocd-root-app.png)
+
+![java-app in Argo CD after the rollout, old and new ReplicaSet](./images/argocd-java-app.png)
+
+**Argo CD tests.**
+
+| Test | What I did | Result |
+|---|---|---|
+| Self-heal | `kubectl scale deployment java-app-deployment --replicas=1` | Argo CD scaled it back to 3 within about a second |
+| Change from Git | PR #2 set `appReplicas: 2` in the `dev` values | 2 replicas 133 s after the merge, no manual sync |
+| Rollback | PR #3 reverted PR #2 with `git revert` | 3 of 3 pods ready 218 s after the merge (including the Fargate start) |
+
+**Destroy.** The first destroy run stopped after 30 resources: `Unable to uninstall Helm release external-secrets: ... context deadline exceeded`. The `db-secret` ExternalSecret still had its finalizer and the controller was already gone, so its CRD stayed in `Terminating`. I removed the finalizer, deleted the apps Argo CD had left and the MySQL PVCs. The volumes stayed attached: `failed to detach ... context deadline exceeded`, because the EBS CSI driver's IAM policy had been deleted in the first run. A second destroy run removed the remaining 56 resources. When the nodes were gone, the three 8 GiB volumes were `available` and I deleted them with `aws ec2 delete-volume`. That's why the destroy now has the cleanup step.
+
+**Leftovers check after the destroy.** No EKS cluster, EC2 instance, EBS volume, NAT gateway, Elastic IP, load balancer, VPC, CloudWatch log group or Secrets Manager secret was left. The cluster's KMS key was `PendingDeletion`, which I shortened to 7 days. The check also found a second `PendingDeletion` key from an earlier run of this project, deleted on its own a few days later.
