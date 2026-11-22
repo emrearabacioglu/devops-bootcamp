@@ -1,8 +1,10 @@
-# EKS environments with Terraform and two Jenkins pipelines
+# EKS environments with Terraform: Jenkins pipelines, and GitHub Actions with Argo CD
 
-**Technologies:** Terraform, AWS (VPC, EKS, Fargate, EBS, IAM, S3, ECR), Helm, Helmfile, Kubernetes, Cluster Autoscaler, Jenkins, Docker, Gradle, Java, MySQL
+**Technologies:** Terraform, AWS (VPC, EKS, Fargate, EBS, IAM, S3, ECR, Secrets Manager), Helm, Helmfile, Kubernetes, Cluster Autoscaler, Jenkins, GitHub Actions, OIDC, Argo CD, External Secrets Operator, Claude, Docker, Gradle, Java, MySQL
 
 One Terraform project creates the VPC, the EKS cluster with a node group and a Fargate profile, the EBS CSI driver, the Cluster Autoscaler and MySQL. The same code creates separate `dev`, `test` and `staging` environments, each with its own state in S3. Two Jenkins pipelines split the work the way a platform team and an app team would: one manages the infrastructure with Terraform, the other builds the Java app and deploys it into the cluster.
+
+The project has a second version of the same delivery, next to the Jenkins one: [GitHub Actions with OIDC, Argo CD and a Claude plan review](#github-actions-and-argo-cd-version).
 
 ## How it works
 
@@ -98,3 +100,103 @@ Only `dev` was applied. `test` and `staging` use the same pipeline with a differ
 - The app pipeline built version `1.2.0`, pushed `java-app:1.2.0-1` to ECR, deployed `java-app` and `phpmyadmin` with Helmfile and pushed the version commit.
 - Final state: 3 EC2 nodes in 3 AZs running MySQL and phpMyAdmin, and the three java-app pods on Fargate with 0 restarts.
 - The app and phpMyAdmin opened through `kubectl port-forward` (`localhost:8080`, `localhost:8081`).
+
+## GitHub Actions and Argo CD version
+
+The same environments, delivered without Jenkins and without stored AWS keys. GitHub Actions gets short-lived AWS credentials through OIDC. The infrastructure workflow keeps the plan, approve, apply flow. The app workflow doesn't deploy anymore: it writes the new image tag to Git, and Argo CD in the cluster syncs it. On pull requests, Claude reads the Terraform plan and comments a risk summary.
+
+The Jenkins files are unchanged. Everything new in the Terraform project is behind `gitops_enabled`, which only the GitHub Actions workflow sets, so a Jenkins run still creates exactly the environment described above.
+
+### How it works
+
+```
+bootstrap/ (once per account)   GitHub OIDC provider + 3 IAM roles
+                                  gha-terraform-plan   read-only     sub = pull_request | ref:main
+                                  gha-terraform-apply  admin         sub = environment:dev|test|staging
+                                  gha-ecr-push         push java-app sub = ref:main
+
+pull request ──> terraform-eks.yml
+                   plan (plan role) ──> plan.txt ──> Claude ──> risk summary comment on the PR
+
+manual run ────> terraform-eks.yml
+                   plan (plan role) ──> tfplan artifact ──> approval in GitHub Environment ──> apply tfplan (apply role)
+                                                                                                   │
+                     Secrets Manager <env>/myapp/db, External Secrets, Argo CD + root app <────────┘
+
+app change ────> java-app-gitops.yml
+                   version bump ──> gradle build ──> push to ECR (ecr-push role)
+                   ──> appVersion in app/gitops/envs/<env>/values/java-app.yaml ──> commit to main
+                                                                                       │
+Argo CD (in the cluster) <── watches app/gitops/envs/<env>/ on main ───────────────────┘
+  ├ secrets     ClusterSecretStore + ExternalSecret ──> Secret db-secret in my-app
+  ├ java-app    chart app/helm/charts/java-app + env values ──> my-app (Fargate)
+  └ phpmyadmin  chart app/helm/charts/phpmyadmin ──> default
+```
+
+| File | What it does |
+|---|---|
+| `bootstrap/` | Separate Terraform project, applied once by hand. GitHub OIDC provider and the three roles. State in the same bucket under `bootstrap/`. |
+| `.github/workflows/terraform-eks.yml` | Infrastructure workflow. PR: fmt, validate, plan for `dev`, Claude review. Manual run with `env` and `action`: plan, approval, apply of the saved plan. |
+| `.github/workflows/java-app-gitops.yml` | App workflow. Version bump, build, image to ECR, new tag in the environment's values file, commit to `main`. |
+| `terraform/gitops.tf` | Secrets Manager secret with the DB credentials, External Secrets Operator with a Pod Identity role, Argo CD, and the root Application for the environment. |
+| `terraform/variables.tf` | `gitops_enabled`, the Argo CD repository and branch, the plan role name and `cluster_admin_arns` for your own `kubectl` access. |
+| `app/gitops/envs/<env>/` | What Argo CD deploys into one environment: the `secrets`, `java-app` and `phpmyadmin` Applications, the values file and the External Secrets manifests. |
+| `app/helm/charts/java-app` | New `existingSecret` value. When set, the chart creates no Secret and loads the keys of an existing one with `envFrom`. Empty by default, so the Helmfile output is the same as before. |
+
+### Decisions
+
+- **No AWS keys in GitHub.** Each job gets a GitHub OIDC token, and AWS exchanges it for temporary credentials of one role. The trust policies check the `sub` claim, so a token from another repository or another branch is refused.
+- **Plan and apply are different roles.** Plans run with a read-only role. Only the apply job has the admin role, and its trust policy accepts only tokens that carry `environment:<env>`. A job gets that claim only by running in the GitHub Environment, and the environment has required reviewers. The approval and the permission are the same gate: nobody can skip the approval and still get the role.
+- **The approved plan is the applied plan.** The plan job uploads the binary `tfplan`, the apply job downloads it and runs `terraform apply tfplan`. The provider lock file is committed, so both jobs use the same provider versions. The binary plan can contain the MySQL password, so the artifact is kept for 1 day.
+- **The plan role can read the cluster, not change it.** Refreshing the Helm releases needs the cluster, so the plan role gets an EKS access entry with `AmazonEKSAdminViewPolicy` (the View policy can't read Secrets, where Helm keeps its releases). The apply role is the cluster creator and gets admin.
+- **CI has no access to the cluster.** The app workflow only pushes an image and a commit. Argo CD pulls the change. What runs in the cluster is always what is in Git, and `selfHeal` reverts manual changes.
+- **App of apps per environment.** Terraform installs Argo CD and one root Application that points to `app/gitops/envs/<env>/`. Adding an app to an environment means adding a manifest there, not changing Terraform.
+- **Charts reused, values per environment.** The Argo CD Applications use the existing charts in `app/helm/charts` with a second source (`ref: values`) for the environment's values file. Promoting a version to `test` or `staging` is a change to that environment's `appVersion`.
+- **No passwords in Git.** The Helmfile values have the DB password in the file. In this version Terraform writes the credentials to Secrets Manager (`<env>/myapp/db`), and External Secrets copies them into the `db-secret` Secret. The operator's Pod Identity role can read only this one secret. `recovery_window_in_days = 0` deletes the secret at once on destroy, so the environment can be created again with the same name.
+- **Claude can't write to GitHub.** The review job gives Claude only `Read` and `Write` and tells it to treat the plan as data. It writes `risk-summary.md`, and a normal step posts that file with `gh pr comment --edit-last`, so every push updates one comment instead of adding a new one. The job doesn't run for fork PRs.
+- **A bot commit can't start a loop.** A push made with `GITHUB_TOKEN` doesn't start new workflow runs.
+- **Known limitation: Argo CD follows `main`.** Manual runs (`workflow_dispatch`) only show up for workflows on the default branch, and Argo CD reads `main`, so this version is tested after the PR is merged.
+
+### Requirements
+
+- Everything from the Jenkins version except Jenkins: the state bucket and the `java-app` ECR repository.
+- Terraform `1.16.1` locally, once, for `bootstrap/`.
+- GitHub repository settings:
+  - Environments `dev`, `test`, `staging`, each with a required reviewer
+  - Secrets `MYSQL_ROOT_PASSWORD` and `ANTHROPIC_API_KEY`
+  - Variables `AWS_PLAN_ROLE_ARN`, `AWS_APPLY_ROLE_ARN`, `AWS_ECR_PUSH_ROLE_ARN` (from the `bootstrap` outputs), and `CLUSTER_ADMIN_ARNS`, a JSON list with your IAM user ARN, e.g. `["arn:aws:iam::<account>:user/<name>"]`
+
+### Usage
+
+Once, the OIDC provider and the roles:
+
+```bash
+cd bootstrap
+terraform init
+terraform apply
+terraform output
+```
+
+If the account already has an OIDC provider for `token.actions.githubusercontent.com`, import it first with `terraform import aws_iam_openid_connect_provider.github <its ARN>`.
+
+Then:
+
+1. Open a PR that changes `terraform/`. The `terraform-eks` workflow plans `dev` and Claude comments the risk summary.
+2. After the merge, run `terraform-eks` with `env=dev` and `action=apply`, and approve the `dev` deployment when the plan looks right.
+3. Run `java-app-gitops` with `env=dev`. It pushes a new image and commits the tag, and Argo CD deploys it.
+4. Check it:
+
+```bash
+aws eks update-kubeconfig --name dev-myapp-eks-cluster --region eu-central-1
+kubectl get applications -n argocd
+kubectl get externalsecret,secret db-secret -n my-app
+kubectl get pods -n my-app
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+```
+
+5. Delete it: run `terraform-eks` with `env=dev` and `action=destroy` and approve.
+
+### Result
+
+_To be filled in after the `dev` test run._

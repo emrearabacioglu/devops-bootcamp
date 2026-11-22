@@ -25,6 +25,7 @@ NN-<module>/
 - Writing style: first person ("I deployed…"), short plain sentences, no marketing language. Terminal output is real, pasted from runs, with prompts like `root@PC:~/modules/<module>/...#`; in module and NOTES files it is indented 4 spaces inside the fenced block. Don't invent output.
 - The root `README.md` has a "Projects" table and a per-module list of demos/projects with relative links. When adding, renaming or moving a demo or project, update those links (and the module's `01-demos/README.md` contents table).
 - Jenkins jobs reference files by repo path (e.g. Script Path `12-terraform/02-projects/terraform/Jenkinsfile`, `11-eks/02-projects/Jenkinsfile`). Moving folders breaks those jobs, and the READMEs that name the paths must be updated too.
+- `12-terraform/02-projects` has two delivery versions side by side: Jenkins (`*/Jenkinsfile`, Helmfile) and GitHub Actions + Argo CD (`.github/workflows/` at the repo root, `bootstrap/` OIDC roles, `terraform/gitops.tf`, `app/gitops/envs/<env>/`). All GitOps resources in the Terraform project are behind `var.gitops_enabled` (default `false`, set only by the workflow), so Jenkins runs stay unchanged. Keep that split, and keep the `java-app` chart's default render identical for Helmfile. The workflows and Argo CD reference repo paths and the `main` branch.
 
 ## Running things
 
