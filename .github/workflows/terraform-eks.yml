@@ -124,9 +124,11 @@ jobs:
       - name: Claude risk summary
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Token from `claude setup-token`: uses the Claude subscription, no separate API billing.
+          # No --model: the subscription's default model is used.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          claude_args: --model claude-opus-5-5 --max-turns 6 --allowedTools "Read,Write"
+          claude_args: --max-turns 6 --allowedTools "Read,Write"
           prompt: |
             You review Terraform plans for an AWS EKS environment (VPC, EKS with a node group
             and a Fargate profile, IAM roles with Pod Identity, MySQL on EBS volumes via Helm,

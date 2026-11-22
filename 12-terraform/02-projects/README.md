@@ -163,7 +163,7 @@ Argo CD (in the cluster) <── watches app/gitops/envs/<env>/ on main ──�
 - Terraform `1.16.1` locally, once, for `bootstrap/`.
 - GitHub repository settings:
   - Environments `dev`, `test`, `staging`, each with a required reviewer
-  - Secrets `MYSQL_ROOT_PASSWORD` and `ANTHROPIC_API_KEY`
+  - Secrets `MYSQL_ROOT_PASSWORD` and `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`, uses a Claude subscription instead of API billing)
   - Variables `AWS_PLAN_ROLE_ARN`, `AWS_APPLY_ROLE_ARN`, `AWS_ECR_PUSH_ROLE_ARN` (from the `bootstrap` outputs), and `CLUSTER_ADMIN_ARNS`, a JSON list with your IAM user ARN, e.g. `["arn:aws:iam::<account>:user/<name>"]`
 
 ### Usage
