@@ -3,6 +3,8 @@
 .vscode/
 .idea/
 
+# local Claude Code notes
+CLAUDE.md
 
 # python
 .venv/
