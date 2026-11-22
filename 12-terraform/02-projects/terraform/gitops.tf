@@ -34,7 +34,8 @@ module "external_secrets_pod_identity" {
   count   = local.gitops
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 2.0"
-  name    = "${local.cluster_name}-external-secrets"
+  # The module uses this as an IAM name_prefix (max 38 characters with the trailing "-").
+  name = "${var.env_prefix}-myapp-external-secrets"
 
   attach_external_secrets_policy        = true
   external_secrets_secrets_manager_arns = [aws_secretsmanager_secret.db[0].arn]
