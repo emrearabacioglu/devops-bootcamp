@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: phpmyadmin
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/emrearabacioglu/devops-bootcamp.git
+    targetRevision: main
+    path: 12-terraform/02-projects/app/helm/charts/phpmyadmin
+    helm:
+      releaseName: phpmyadmin
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

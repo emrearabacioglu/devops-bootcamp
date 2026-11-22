@@ -19,6 +19,11 @@ spec:
         image: "{{ .Values.appImage }}:{{ .Values.appVersion }}"
         ports:
         - containerPort: {{ .Values.containerPort }}
+        {{- if .Values.existingSecret }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.existingSecret }}
+        {{- end }}
         env:
         {{- range $key, $value := .Values.secretData }}
          - name: {{ $key }}

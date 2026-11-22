@@ -1,0 +1,29 @@
+# The java-app chart from app/helm/charts, with this environment's values file.
+# The app workflow changes appVersion in values/java-app.yaml; Argo CD syncs it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: java-app
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/emrearabacioglu/devops-bootcamp.git
+      targetRevision: main
+      path: 12-terraform/02-projects/app/helm/charts/java-app
+      helm:
+        releaseName: java-app
+        valueFiles:
+          - $values/12-terraform/02-projects/app/gitops/envs/dev/values/java-app.yaml
+    - repoURL: https://github.com/emrearabacioglu/devops-bootcamp.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

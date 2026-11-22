@@ -12,5 +12,8 @@ configData: {}
 
 secretName: db-secret
 secretData: {}
+# Name of a Secret created outside the chart (e.g. by External Secrets).
+# When set, the chart creates no Secret and loads all its keys as env vars.
+existingSecret: ""
   
 regularData: {}
