@@ -1,0 +1,107 @@
+# GitHub Actions version of 12-terraform/02-projects/app/Jenkinsfile, with GitOps.
+#
+# Version bump -> gradle build -> image to ECR (OIDC) -> new tag written to
+# app/gitops/envs/<env>/values/java-app.yaml -> commit to main.
+# The workflow never talks to the cluster: Argo CD sees the commit and deploys it.
+
+name: java-app-gitops
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "12-terraform/02-projects/app/java-app/src/**"
+      - "12-terraform/02-projects/app/java-app/Dockerfile"
+  workflow_dispatch:
+    inputs:
+      env:
+        description: Environment to deploy to
+        type: choice
+        options: [dev, test, staging]
+        default: dev
+
+permissions:
+  contents: read
+
+# Two runs at the same time would both bump the same version.
+concurrency:
+  group: java-app-gitops
+  cancel-in-progress: false
+
+env:
+  ENV: ${{ inputs.env || 'dev' }}
+  AWS_REGION: eu-central-1
+  APP_DIR: 12-terraform/02-projects/app/java-app
+  ECR_REPOSITORY: java-app
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # commit the new version
+      id-token: write # OIDC for ECR
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Increment version (minor)
+        id: version
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          current=$(sed -nE "s/^version '(.+)'/\1/p" build.gradle)
+          IFS=. read -r major minor patch <<< "$current"
+          new="${major}.$((minor + 1)).0"
+          sed -i -E "s/^version '.+'/version '${new}'/" build.gradle
+          echo "image_tag=${new}-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "$current -> $new (image tag ${new}-${GITHUB_RUN_NUMBER})"
+
+      - name: Build app
+        working-directory: ${{ env.APP_DIR }}
+        run: gradle clean build
+
+      - name: AWS credentials (ECR push role)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.version.outputs.image_tag }}
+        run: |
+          docker build -t "$IMAGE" "$APP_DIR"
+          docker push "$IMAGE"
+
+      - name: Point the environment at the new image
+        env:
+          VALUES: 12-terraform/02-projects/app/gitops/envs/${{ env.ENV }}/values/java-app.yaml
+          TAG: ${{ steps.version.outputs.image_tag }}
+        run: |
+          yq -i '.appVersion = strenv(TAG)' "$VALUES"
+          git diff
+
+      # A push made with GITHUB_TOKEN doesn't start new workflow runs, so this can't loop.
+      - name: Commit version update
+        env:
+          TAG: ${{ steps.version.outputs.image_tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$APP_DIR/build.gradle" "12-terraform/02-projects/app/gitops/envs/$ENV/values/java-app.yaml"
+          git commit -m "ci: deploy java-app $TAG to $ENV"
+          git pull --rebase origin main
+          git push origin HEAD:main

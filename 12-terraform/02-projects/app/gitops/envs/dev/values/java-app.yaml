@@ -1,0 +1,20 @@
+appName: java-app
+appReplicas: 3
+appContainerName: javamysqlapp
+appImage: 731872836472.dkr.ecr.eu-central-1.amazonaws.com/java-app
+# Set by the app workflow (.github/workflows/java-app-gitops.yml).
+appVersion: "1.0.0"
+containerPort: 8080
+
+servicePort: 8080
+
+configName: db-config
+configData:
+  DB_SERVER: mysql-primary.default
+
+# DB_USER, DB_PWD and DB_NAME come from AWS Secrets Manager (dev/myapp/db)
+# through the ExternalSecret in ../secrets/, not from this file.
+existingSecret: db-secret
+secretData: {}
+
+regularData: {}

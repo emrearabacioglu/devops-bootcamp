@@ -34,7 +34,7 @@ The larger projects, check README:
 | Project | What it does | Main tools |
 |---|---|---|
 | [Java app with MySQL on EKS, deployed by a Jenkins pipeline](./11-eks/02-projects) | EKS cluster with an EC2 node group for MySQL and Fargate for the app. A Jenkins pipeline bumps the version, pushes the image to ECR and deploys everything with Helmfile. | EKS, Fargate, eksctl, Jenkins, Helmfile, ECR |
-| [EKS environments with Terraform and two Jenkins pipelines](./12-terraform/02-projects) | One Terraform project creates `dev`, `test` and `staging` EKS environments with their own S3 state, Cluster Autoscaler and MySQL. One pipeline manages the infrastructure, another deploys the app. | Terraform, EKS, S3, Cluster Autoscaler, Jenkins, Helmfile |
+| [EKS environments with Terraform: Jenkins, and GitHub Actions with Argo CD](./12-terraform/02-projects) | One Terraform project creates `dev`, `test` and `staging` EKS environments with their own S3 state, Cluster Autoscaler and MySQL. One pipeline manages the infrastructure, another deploys the app. A second version does the same with GitHub Actions over OIDC (plan, approval, apply), deploys the app with Argo CD from Git, reads the DB password from Secrets Manager, and has Claude comment a risk summary of the plan on PRs. | Terraform, EKS, S3, Cluster Autoscaler, Jenkins, Helmfile, GitHub Actions, OIDC, Argo CD, External Secrets |
 | [Run and monitor nginx on EC2 with Python](./14-python-automation/02-projects/01-run-and-monitor-nginx-on-ec2) | One script creates an EC2 instance, installs Docker over SSH, starts nginx and restarts it when it stops answering. | Python, boto3, paramiko, EC2, Docker |
 | [Deploy an ECR image to EC2 from a Jenkins pipeline with Python](./14-python-automation/02-projects/02-deploy-ecr-image-from-jenkins) | Jenkins lists the image tags in ECR, the user picks one, Python scripts deploy it to EC2 and check that the selected version is running. | Python, boto3, Jenkins, ECR, EC2 |
 | [Jenkins server on EC2 (Amazon Linux or Ubuntu)](./15-ansible/02-projects/04-setup-with-distro-input) | Ansible creates an EC2 server with the chosen distro and installs Jenkins, Docker and Node.js on it. | Ansible roles, dynamic inventory, EC2 |
@@ -149,7 +149,7 @@ The larger projects, check README:
 
 **Projects**
 
-- [EKS environments with Terraform and two Jenkins pipelines](./12-terraform/02-projects)
+- [EKS environments with Terraform: Jenkins, and GitHub Actions with Argo CD](./12-terraform/02-projects)
 
 ### [Module 13 – Programming with Python](./13-python-basic/01-demos/README.md)
 
