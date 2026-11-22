@@ -9,9 +9,11 @@ module "eks" {
   vpc_id     = module.myapp-vpc.vpc_id
 
   endpoint_public_access                   = true
-  enable_cluster_creator_admin_permissions = true
+  enable_cluster_creator_admin_permissions = !var.gitops_enabled
   enabled_log_types                        = []
-  access_entries                           = merge(local.admin_access_entries, local.plan_access_entry)
+  access_entries                           = merge(local.admin_access_entries, local.apply_access_entry, local.plan_access_entry)
+  # Empty list: the module falls back to the caller (Jenkins version unchanged).
+  kms_key_administrators = var.gitops_enabled ? [local.apply_role_arn] : []
 
   addons = {
     coredns = {}
