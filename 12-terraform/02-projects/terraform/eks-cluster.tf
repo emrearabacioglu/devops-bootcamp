@@ -11,6 +11,7 @@ module "eks" {
   endpoint_public_access                   = true
   enable_cluster_creator_admin_permissions = true
   enabled_log_types                        = []
+  access_entries                           = merge(local.admin_access_entries, local.plan_access_entry)
 
   addons = {
     coredns = {}
