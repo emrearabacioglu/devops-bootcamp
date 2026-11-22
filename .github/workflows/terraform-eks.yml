@@ -207,6 +207,42 @@ jobs:
           name: tfplan
           path: ${{ env.TF_DIR }}
 
+      # Terraform removes the Helm releases in parallel. Without this step the
+      # ExternalSecret outlives its controller (its finalizer blocks the
+      # External Secrets uninstall) and the MySQL volumes outlive the EBS CSI
+      # driver's IAM policy (they can't be detached and stay in AWS).
+      # So first remove what Argo CD deployed and the MySQL volumes, while
+      # Argo CD, External Secrets and the EBS CSI driver still run.
+      - name: Pre-destroy cleanup in the cluster
+        if: inputs.action == 'destroy'
+        run: |
+          set -euo pipefail
+          CLUSTER="$ENV-myapp-eks-cluster"
+          if ! aws eks describe-cluster --name "$CLUSTER" >/dev/null 2>&1; then
+            echo "Cluster $CLUSTER not found, nothing to clean up."
+            exit 0
+          fi
+          aws eks update-kubeconfig --name "$CLUSTER" --region "$AWS_REGION"
+
+          echo "1. Argo CD apps: root first, so it can't recreate the others"
+          kubectl delete applications.argoproj.io root -n argocd --ignore-not-found --wait=true --timeout=2m || true
+          kubectl delete applications.argoproj.io --all -n argocd --ignore-not-found --wait=true --timeout=2m || true
+
+          echo "2. What Argo CD deployed, while External Secrets still runs"
+          kubectl delete namespace my-app --ignore-not-found --wait=true --timeout=5m
+          kubectl delete deployment/phpmyadmin service/phpmyadmin-service -n default --ignore-not-found
+          kubectl delete clustersecretstores.external-secrets.io --all --ignore-not-found 2>/dev/null || true
+
+          echo "3. MySQL pods, then their volumes, while the EBS CSI driver can still delete them"
+          kubectl delete statefulset -n default -l app.kubernetes.io/instance=mysql --cascade=foreground --ignore-not-found --wait=true --timeout=5m
+          kubectl delete pvc -n default -l app.kubernetes.io/instance=mysql --ignore-not-found --wait=true --timeout=5m
+          for i in $(seq 1 30); do
+            left=$(kubectl get pv -o jsonpath='{range .items[?(@.spec.claimRef.namespace=="default")]}{.metadata.name}{" "}{end}')
+            [ -z "$left" ] && { echo "All MySQL volumes deleted."; break; }
+            echo "Waiting for volumes: $left"; sleep 10
+          done
+          [ -z "$left" ] || { echo "::error::MySQL volumes still exist: $left"; exit 1; }
+
       - run: terraform init
       - run: terraform workspace select "$ENV"
       - name: terraform apply (the approved plan)
